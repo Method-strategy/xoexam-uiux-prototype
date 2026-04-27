@@ -173,6 +173,10 @@ function LoginScreen({ onLogin }) {
           40%{transform:scale(1)}
         }
       `}</style>
+      {/* Version badge */}
+      <div style={{ position:'fixed', bottom:12, right:16, fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.25)', letterSpacing:'0.08em', fontFamily:"'Nunito Sans', sans-serif", pointerEvents:'none', zIndex:100 }}>
+        v0.1.1
+      </div>
     </div>
   );
 }
