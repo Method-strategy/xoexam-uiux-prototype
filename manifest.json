@@ -1,0 +1,16 @@
+{
+  "name": "xoExam™ Controller",
+  "short_name": "xoExam",
+  "description": "Xenon Ophthalmics xoExam™ tablet controller for diagnostic headset devices",
+  "start_url": "/xoExam Prototype.html",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0e2f5e",
+  "theme_color": "#1f8eff",
+  "icons": [
+    { "src": "assets/xenon-logo-light.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/xenon-logo-light.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "categories": ["medical", "productivity"],
+  "lang": "en-US"
+}
