@@ -161,8 +161,8 @@ function LoginScreen({ onLogin }) {
           {/* Footer */}
           <div style={{ marginTop:64, paddingTop:18, textAlign:'center' }}>
             <div style={{ fontSize:9, fontWeight:700, color:'#9ca3af', letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:8 }}>Only from</div>
-            <img src="assets/xenon-logo-light.png" alt="Xenon Ophthalmics" style={{ height:56 }} />
-            <div style={{ fontSize:10, fontWeight:300, color:'#9ca3af', marginTop:6 }}>© 2026 Xenon Ophthalmics Inc. All rights reserved.</div>
+            <img src="assets/xenon-logo-light.png" alt="Xenon Ophthalmics" style={{ height:67 }} />
+            <div style={{ fontSize:10, fontWeight:300, color:'#9ca3af', marginTop:6 }}>© 2026 Xenon Ophthalmics Inc. All rights reserved. &nbsp;·&nbsp; v0.1.1</div>
           </div>
         </div>
       </div>
@@ -173,10 +173,6 @@ function LoginScreen({ onLogin }) {
           40%{transform:scale(1)}
         }
       `}</style>
-      {/* Version badge */}
-      <div style={{ position:'fixed', bottom:12, right:16, fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.25)', letterSpacing:'0.08em', fontFamily:"'Nunito Sans', sans-serif", pointerEvents:'none', zIndex:100 }}>
-        v0.1.1
-      </div>
     </div>
   );
 }
