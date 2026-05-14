@@ -1,111 +1,9 @@
 
-// DoctorsPage.jsx + MessagesPage.jsx
-
-const DOCTORS = [
-  { id:'1', name:'Dr. Alice Brown',    initials:'AB', specialty:'Ophthalmologist',  license:'MD-234567', phone:'(555) 111-2222', email:'alice.brown@xenonoph.com',    exp:15, status:'Active', patients:342, dept:'Retina & Vitreous',   shift:'Full Time', qual:'MD, FRCS' },
-  { id:'2', name:'Dr. Michael Chen',   initials:'MC', specialty:'Optometrist',       license:'OD-345678', phone:'(555) 222-3333', email:'michael.chen@xenonoph.com',   exp:10, status:'Active', patients:278, dept:'General Optometry',   shift:'Morning',   qual:'OD, FAAO' },
-  { id:'3', name:'Dr. Sarah Williams', initials:'SW', specialty:'Ophthalmologist',  license:'MD-456789', phone:'(555) 333-4444', email:'sarah.williams@xenonoph.com', exp:12, status:'Active', patients:315, dept:'Cornea & Refractive', shift:'Full Time', qual:'MD, PhD' },
-  { id:'4', name:'Dr. James Patel',    initials:'JP', specialty:'Glaucoma Specialist',license:'MD-567890',phone:'(555) 444-5555', email:'james.patel@xenonoph.com',    exp:18, status:'Active', patients:401, dept:'Glaucoma',           shift:'Evening',   qual:'MD, FACS' },
-  { id:'5', name:'Dr. Lisa Torres',    initials:'LT', specialty:'Pediatric Eye Care', license:'MD-678901',phone:'(555) 555-6666', email:'lisa.torres@xenonoph.com',    exp:8,  status:'On Leave',patients:156, dept:'Pediatrics',         shift:'Morning',   qual:'MD' },
-];
-
-function DoctorsPage({ tweaks }) {
-  const accent = tweaks?.accentColor || '#1f8eff';
-  const [search, setSearch] = React.useState('');
-  const [selected, setSelected] = React.useState(null);
-  const [searchFocused, setSearchFocused] = React.useState(false);
-
-  const filtered = DOCTORS.filter(d => !search || d.name.toLowerCase().includes(search.toLowerCase()) || d.specialty.toLowerCase().includes(search.toLowerCase()) || d.dept.toLowerCase().includes(search.toLowerCase()));
-
-  return (
-    <div style={{ padding:'20px 24px 24px', display:'flex', flexDirection:'column', gap:16, height:'100%', boxSizing:'border-box', fontFamily:"'Nunito Sans', sans-serif" }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-        <div>
-          <h1 style={{ fontSize:20, fontWeight:700, color:'#111827', margin:0 }}>Doctors</h1>
-          <p style={{ fontSize:12, fontWeight:300, color:'#6b7280', margin:'3px 0 0' }}>{DOCTORS.length} practitioners on staff</p>
-        </div>
-        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-          <div style={{ position:'relative' }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}>
-              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-            </svg>
-            <input value={search} onChange={e=>setSearch(e.target.value)} onFocus={()=>setSearchFocused(true)} onBlur={()=>setSearchFocused(false)} placeholder="Search doctors..."
-              style={{ height:38, width:220, paddingLeft:32, paddingRight:12, borderRadius:9, border:`1.5px solid ${searchFocused?accent:'#e5e7eb'}`, background:'#fff', fontSize:12, outline:'none', boxSizing:'border-box', fontFamily:"'Nunito Sans', sans-serif" }}
-            />
-          </div>
-          <button style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:9, border:'none', background:`linear-gradient(135deg,${accent},#155bcc)`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Nunito Sans', sans-serif", boxShadow:`0 3px 12px ${accent}40` }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            Add Doctor
-          </button>
-        </div>
-      </div>
-
-      <div style={{ flex:1, display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))', gap:14, overflowY:'auto', alignContent:'start' }}>
-        {filtered.map(doc => (
-          <div key={doc.id} onClick={() => setSelected(doc)} style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:18, cursor:'pointer', transition:'all 0.2s' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor=accent; e.currentTarget.style.boxShadow=`0 8px 24px ${accent}18`; e.currentTarget.style.transform='translateY(-2px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor='#e5e7eb'; e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none'; }}
-          >
-            <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
-              <div style={{ width:44, height:44, borderRadius:'50%', background:`linear-gradient(135deg,${accent},#155bcc)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700, color:'white', flexShrink:0 }}>{doc.initials}</div>
-              <div>
-                <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{doc.name}</div>
-                <div style={{ fontSize:11, fontWeight:300, color:'#6b7280' }}>{doc.specialty}</div>
-              </div>
-            </div>
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:10 }}>
-              <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:20, background: doc.status==='Active'?'#dcfce7':'#fef3c7', color: doc.status==='Active'?'#16a34a':'#d97706', textTransform:'uppercase', letterSpacing:'0.06em' }}>{doc.status}</span>
-              <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:20, background:'#eff6ff', color:'#2563eb', textTransform:'uppercase', letterSpacing:'0.06em' }}>{doc.shift}</span>
-            </div>
-            <div style={{ fontSize:11, fontWeight:300, color:'#6b7280', marginBottom:3 }}>{doc.dept}</div>
-            <div style={{ display:'flex', justifyContent:'space-between', paddingTop:10, borderTop:'1px solid #f3f4f6', marginTop:8 }}>
-              <span style={{ fontSize:11, fontWeight:300, color:'#9ca3af' }}>{doc.exp} yrs exp</span>
-              <span style={{ fontSize:11, fontWeight:700, color:accent }}>{doc.patients} patients</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {selected && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}
-          onClick={e => e.target===e.currentTarget && setSelected(null)}>
-          <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:500, boxShadow:'0 24px 64px rgba(0,0,0,0.2)', overflow:'hidden' }}>
-            <div style={{ background:`linear-gradient(135deg,#0e2f5e,${accent})`, padding:'24px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-                <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, color:'white', border:'2px solid rgba(255,255,255,0.3)' }}>{selected.initials}</div>
-                <div>
-                  <div style={{ fontSize:16, fontWeight:700, color:'white' }}>{selected.name}</div>
-                  <div style={{ fontSize:12, fontWeight:300, color:'rgba(255,255,255,0.7)' }}>{selected.qual} · {selected.specialty}</div>
-                </div>
-              </div>
-              <button onClick={() => setSelected(null)} style={{ width:28, height:28, borderRadius:'50%', border:'none', background:'rgba(255,255,255,0.2)', cursor:'pointer', color:'white', fontSize:16 }}>×</button>
-            </div>
-            <div style={{ padding:24 }}>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
-                {[['License', selected.license], ['Department', selected.dept], ['Phone', selected.phone], ['Email', selected.email], ['Experience', `${selected.exp} years`], ['Active Patients', selected.patients]].map(([l,v]) => (
-                  <div key={l} style={{ background:'#f9fafb', borderRadius:9, padding:'10px 12px', border:'1px solid #e5e7eb' }}>
-                    <div style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:3 }}>{l}</div>
-                    <div style={{ fontSize:12, fontWeight:700, color:'#111827' }}>{v}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display:'flex', gap:10 }}>
-                <button style={{ flex:1, padding:'9px 0', borderRadius:9, border:'none', background:`linear-gradient(135deg,${accent},#155bcc)`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Nunito Sans', sans-serif" }}>View Schedule</button>
-                <button style={{ flex:1, padding:'9px 0', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Nunito Sans', sans-serif" }}>Edit Profile</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Messages Page ──
+// MessagesPage.jsx — Messaging UI (Doctor list/profile lives in DoctorsPage.jsx)
 
 const CONVOS = [
   { id:'1', name:'Sarah Johnson',   initials:'SJ', type:'patient', lastMsg:'Thank you for the appointment confirmation', time:'2m ago',  unread:true,  online:true,  isAI:true,  messages:[{id:'m1',from:'patient',text:'Hi, I wanted to confirm my appointment for tomorrow at 2 PM.',time:'10:30 AM'},{id:'m2',from:'ai',text:'Hello Sarah! Your appointment is confirmed for tomorrow at 2 PM with Dr. Taylor. Please arrive 15 minutes early.',time:'10:32 AM'},{id:'m3',from:'patient',text:"Thank you for the appointment confirmation. I'll be there!",time:'2m ago'}] },
-  { id:'2', name:'Michael Chen',    initials:'MC', type:'staff',   lastMsg:'The calibration report is ready',           time:'12m ago', unread:false, online:true,  isAI:false, messages:[{id:'m4',from:'staff',text:'Hey, the calibration report for xoExam #3 is ready for review.',time:'12m ago'}] },
+  { id:'2', name:'Michael Chen',    initials:'MC', type:'staff',   lastMsg:'The calibration report is ready',           time:'12m ago', unread:false, online:true,  isAI:false, messages:[{id:'m4',from:'staff',text:'Hey, the calibration report for xoExam™ #3 is ready for review.',time:'12m ago'}] },
   { id:'3', name:'Dr. Alice Brown', initials:'AB', type:'staff',   lastMsg:'Can we reschedule the 3PM exam?',          time:'1h ago',  unread:true,  online:false, isAI:false, messages:[{id:'m5',from:'staff',text:'Can we reschedule the 3PM exam to 4PM? I have an emergency.',time:'1h ago'}] },
   { id:'4', name:'James Wilson',    initials:'JW', type:'patient', lastMsg:'When will results be available?',           time:'2h ago',  unread:false, online:false, isAI:true,  messages:[{id:'m6',from:'patient',text:'When will my exam results be available?',time:'2h ago'}] },
 ];
@@ -236,4 +134,4 @@ function MessagesPage({ tweaks }) {
   );
 }
 
-Object.assign(window, { DoctorsPage, MessagesPage });
+Object.assign(window, { MessagesPage });

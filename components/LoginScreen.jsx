@@ -162,7 +162,7 @@ function LoginScreen({ onLogin }) {
           <div style={{ marginTop:64, paddingTop:18, textAlign:'center' }}>
             <div style={{ fontSize:9, fontWeight:700, color:'#9ca3af', letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:8 }}>Only from</div>
             <img src="assets/xenon-logo-light.png" alt="Xenon Ophthalmics" style={{ height:67 }} />
-            <div style={{ fontSize:10, fontWeight:300, color:'#9ca3af', marginTop:6 }}>© 2026 Xenon Ophthalmics Inc. All rights reserved. &nbsp;·&nbsp; v0.1.1</div>
+            <div style={{ fontSize:10, fontWeight:300, color:'#9ca3af', marginTop:6 }}>© 2026 Xenon Ophthalmics Inc. All rights reserved. &nbsp;·&nbsp; v0.1.2</div>
           </div>
         </div>
       </div>
