@@ -1,10 +1,10 @@
 // ColorVisionTest.jsx — Ishihara 24-plate + D-15 Farnsworth cap arrangement test
 
 const ISHIHARA_PLATES = [
-  { n:1,  correct:'12',  color:'#e63946', bg:'#f1c40f', image:'assets/ishihara-plate1.png' },
-  { n:2,  correct:'8',   color:'#2980b9', bg:'#e74c3c', image:'assets/ishihara-plate2.png' },
-  { n:3,  correct:'5',   color:'#27ae60', bg:'#e67e22', image:'assets/ishihara-plate3.png' },
-  { n:4,  correct:'3',   color:'#8e44ad', bg:'#16a085', image:'assets/ishihara-plate4.png' },
+  { n:1,  correct:'12',  color:'#e63946', bg:'#f1c40f', image:'assets/ishihara-plate1.jpg' },
+  { n:2,  correct:'8',   color:'#2980b9', bg:'#e74c3c', image:'assets/ishihara-plate2.jpg' },
+  { n:3,  correct:'5',   color:'#27ae60', bg:'#e67e22', image:'assets/ishihara-plate3.jpg' },
+  { n:4,  correct:'3',   color:'#8e44ad', bg:'#16a085', image:'assets/ishihara-plate4.jpg' },
   { n:5,  correct:'57',  color:'#c0392b', bg:'#f39c12' },
   { n:6,  correct:'5',   color:'#1abc9c', bg:'#e74c3c' },
   { n:7,  correct:'3',   color:'#d35400', bg:'#27ae60' },

@@ -4,7 +4,7 @@
 
 const DOCTORS = [
   {
-    id:'1', name:'Dr. Alice Brown', initials:'AB', specialty:'Ophthalmologist', license:'MD-234567',
+    id:'1', name:'Dr. Alice Brown', initials:'AB', isMe:true, specialty:'Ophthalmologist', license:'MD-234567',
     phone:'(555) 111-2222', email:'alice.brown@xenonoph.com', exp:15, status:'Active', patients:342,
     dept:'Retina & Vitreous', shift:'Full Time', qual:'MD, FRCS',
     dob:'08/12/1978', joinDate:'01/15/2015', address:'123 Medical Plaza, Suite 400, Boston, MA 02115',
@@ -133,59 +133,65 @@ const DOC_SCHEDULE = [
   ]},
 ];
 
-// ── Module lock pattern (same vocabulary as WelcomeScreen) ──
-function ModuleCard({ id, name, color, tagline, status, action, onAction }) {
-  const [hover, setHover] = React.useState(false);
-  const locked = status === 'locked';
+// ── Marketing panel used for locked modules (xoFit, xoLab) ──
+function MarketingPanel({ image, color, name, tagline, punchline, blurb, onContactSales }) {
   return (
-    <div
-      onMouseEnter={()=>setHover(true)}
-      onMouseLeave={()=>setHover(false)}
-      onClick={()=>!locked && onAction && onAction()}
-      style={{
-        flex:1, background:'#fff', borderRadius:14,
-        border: `1.5px solid ${hover && !locked ? color : '#e5e7eb'}`,
-        cursor: locked ? 'default' : 'pointer', overflow:'hidden',
-        boxShadow: hover && !locked ? `0 8px 24px ${color}25` : 'none',
-        transform: hover && !locked ? 'translateY(-2px)' : 'none',
-        transition:'all 0.2s', position:'relative', minWidth:0
-      }}
-    >
-      {locked && (
-        <div style={{ position:'absolute', top:14, right:14, width:26, height:26, borderRadius:'50%', background:'rgba(14,47,94,0.06)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1 }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
+    <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', overflow:'hidden', position:'relative' }}>
+      {/* Accent strip */}
+      <div style={{ height:5, background:`linear-gradient(90deg, ${color}, ${color}66)` }}/>
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(0, 1fr) 360px', minHeight:460 }}>
+        {/* Left: copy */}
+        <div style={{ padding:'36px 40px 32px', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
+          <div>
+            <div style={{ marginBottom:24 }}>
+              <span style={{ fontSize:9, fontWeight:700, padding:'5px 10px', borderRadius:5, background:'#f3f4f6', color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.08em', display:'inline-flex', alignItems:'center', gap:6 }}>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Not yet on this practice
+              </span>
+            </div>
+
+            <div style={{ fontSize:24, fontWeight:700, color, letterSpacing:'-0.015em', marginBottom:18, lineHeight:1.2 }}>{tagline}</div>
+
+            {punchline && (
+              <div style={{ fontSize:18, fontWeight:700, color:'#111827', lineHeight:1.35, marginBottom:14, letterSpacing:'-0.005em' }}>{punchline}</div>
+            )}
+
+            <p style={{ fontSize:13, fontWeight:400, color:'#374151', lineHeight:1.7, margin:0, maxWidth:520 }}>{blurb}</p>
+          </div>
+
+          <div style={{ display:'flex', gap:10, marginTop:28 }}>
+            <button onClick={onContactSales} style={{
+              padding:'11px 20px', borderRadius:9, border:'none',
+              background:`linear-gradient(135deg, ${color}, ${color}cc)`,
+              color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer',
+              fontFamily:"'Nunito Sans', sans-serif", letterSpacing:'0.02em',
+              boxShadow:`0 3px 12px ${color}40`, display:'flex', alignItems:'center', gap:7
+            }}>
+              Contact XO Sales
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+            <button style={{
+              padding:'11px 18px', borderRadius:9, border:`1.5px solid ${color}40`,
+              background:'#fff', color, fontSize:12, fontWeight:700, cursor:'pointer',
+              fontFamily:"'Nunito Sans', sans-serif", letterSpacing:'0.02em'
+            }}>Learn More</button>
+          </div>
         </div>
-      )}
-      <div style={{ height:4, background:`linear-gradient(90deg, ${color}, ${color}88)`, opacity: locked ? 0.4 : 1 }}/>
-      <div style={{ padding:'20px 22px' }}>
-        <div style={{ display:'flex', alignItems:'baseline', gap:8, marginBottom:6 }}>
-          <span style={{ fontSize:18, fontWeight:700, color: locked ? '#9ca3af' : '#0e2f5e', letterSpacing:'-0.01em' }}>{name}</span>
-        </div>
-        <p style={{ fontSize:12, fontWeight:300, color: locked ? '#9ca3af' : '#6b7280', lineHeight:1.5, margin:'0 0 18px', minHeight:36 }}>{tagline}</p>
-        <div style={{
-          display:'flex', alignItems:'center', justifyContent:'space-between', gap:10,
-          padding:'9px 13px', borderRadius:8,
-          background: locked ? '#f9fafb' : (hover ? `${color}12` : '#f9fafb'),
-          border: `1px solid ${locked ? '#e5e7eb' : (hover ? color+'40' : '#e5e7eb')}`,
-          transition:'all 0.2s'
-        }}>
-          <span style={{ fontSize:11, fontWeight:700, color: locked ? '#9ca3af' : (hover ? color : '#6b7280'), textTransform:'uppercase', letterSpacing:'0.08em' }}>
-            {action}
-          </span>
-          {!locked && (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={hover?color:'#9ca3af'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform:hover?'translateX(2px)':'none', transition:'transform 0.2s' }}>
-              <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-          )}
+
+        {/* Right: marketing image (full-bleed) */}
+        <div style={{ borderLeft:'1px solid #f3f4f6', background:'#fff', overflow:'hidden', position:'relative' }}>
+          <img
+            src={image}
+            alt={`${name} product`}
+            style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', display:'block' }}
+          />
         </div>
       </div>
     </div>
   );
 }
 
-// ── Doctor Profile (full page, 6 tabs) ──
+// ── Doctor Profile (full page, 8 tabs) ──
 function DoctorProfile({ doc, onBack, accent }) {
   const [tab, setTab] = React.useState('overview');
 
@@ -194,7 +200,9 @@ function DoctorProfile({ doc, onBack, accent }) {
     ['contact','Contact'],
     ['credentials','Credentials'],
     ['schedule','Schedule'],
-    ['modules','Connected Modules'],
+    ['xoiris','xoIris™'],
+    ['xofit','xoFit™'],
+    ['xolab','xoLab™'],
     ['reviews','Reviews'],
   ];
 
@@ -373,40 +381,93 @@ function DoctorProfile({ doc, onBack, accent }) {
     </div>
   );
 
-  // ── Modules tab ──
-  const renderModules = () => (
+  // ── xoIris tab (connected state — no marketing copy) ──
+  const renderXoIris = () => (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-      <div style={{ background:'#fff', borderRadius:12, border:'1.5px solid #e5e7eb', padding:20 }}>
-        <div style={{ fontSize:13, fontWeight:700, color:'#111827', marginBottom:4 }}>XO Vision Care System</div>
-        <p style={{ fontSize:12, fontWeight:300, color:'#6b7280', margin:0, lineHeight:1.6 }}>
-          Connected modules available to {doc.name.replace('Dr. ','Dr. ')}. xoExam™ is active for this practice. Additional modules expand the care continuum from scheduling to fitting to finishing.
-        </p>
+      {/* Connected status / launch panel */}
+      <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', overflow:'hidden' }}>
+        <div style={{ height:5, background:'linear-gradient(90deg, #155bcc, #155bcc88)' }}/>
+        <div style={{ padding:'28px 32px', display:'flex', alignItems:'center', gap:24, flexWrap:'wrap' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:18, flex:1, minWidth:280 }}>
+            <img src="assets/xo-iris-logo.png" alt="xoIris" style={{ height:34, objectFit:'contain' }}/>
+            <div style={{ width:1, height:38, background:'#e5e7eb' }}/>
+            <div>
+              <div style={{ fontSize:15, fontWeight:700, color:'#155bcc', letterSpacing:'-0.005em', marginBottom:3 }}>Intelligent real-time integrated scheduling</div>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:11, fontWeight:700, color:'#16a34a' }}>
+                  <span style={{ width:8, height:8, borderRadius:'50%', background:'#16a34a', boxShadow:'0 0 0 3px rgba(22,163,74,0.18)' }}/>
+                  Connected
+                </span>
+                <span style={{ fontSize:11, fontWeight:300, color:'#9ca3af' }}>·</span>
+                <span style={{ fontSize:11, fontWeight:300, color:'#6b7280' }}>Last synced 2 min ago</span>
+              </div>
+            </div>
+          </div>
+          <div style={{ display:'flex', gap:10 }}>
+            <button style={{ padding:'10px 16px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Nunito Sans', sans-serif", display:'flex', alignItems:'center', gap:7 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Sync now
+            </button>
+            <button onClick={() => window.open('https://xo-iris.com/login','_blank')} style={{
+              padding:'10px 18px', borderRadius:9, border:'none',
+              background:'linear-gradient(135deg, #155bcc, #1d4ed8)',
+              color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer',
+              fontFamily:"'Nunito Sans', sans-serif", display:'flex', alignItems:'center', gap:7,
+              boxShadow:'0 3px 12px rgba(21,91,204,0.4)'
+            }}>
+              Open xoIris
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+            </button>
+          </div>
+        </div>
       </div>
-      <div style={{ display:'flex', gap:14 }}>
-        <ModuleCard
-          id="xoiris" name="xoIris™" color="#155bcc"
-          tagline="Intelligent real-time integrated scheduling. Sync patient and doctor appointments with xoExam."
-          status="unlocked" action="Open xoIris"
-          onAction={() => window.open('https://xo-iris.com/login','_blank')}
-        />
-        <ModuleCard
-          id="xofit" name="xoFit™" color="#05c1bc"
-          tagline="Advanced frame fitting precision. Sync frame measurements directly to patient records."
-          status="locked" action="Contact XO Sales"
-        />
-        <ModuleCard
-          id="xolab" name="xoLab™" color="#75d647"
-          tagline="Precision in-office eyewear finishing. Close the loop from prescription to delivery."
-          status="locked" action="Contact XO Sales"
-        />
+
+      {/* Synced data preview */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14 }}>
+        {[
+          { label:'Synced Appointments', value:'12', sub:'This week' },
+          { label:"Today's Schedule",    value:'3',  sub:'Confirmed' },
+          { label:'No-Show Risk Flags',  value:'1',  sub:'AI-predicted' },
+          { label:'Pending Confirmations', value:'4', sub:'Awaiting patient' },
+        ].map((s,i) => (
+          <div key={i} style={{ background:'#fff', borderRadius:12, border:'1.5px solid #e5e7eb', padding:'16px 18px' }}>
+            <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>{s.label}</div>
+            <div style={{ fontSize:26, fontWeight:700, color:'#111827', lineHeight:1, marginBottom:4 }}>{s.value}</div>
+            <div style={{ fontSize:11, fontWeight:300, color:'#6b7280' }}>{s.sub}</div>
+          </div>
+        ))}
       </div>
-      <div style={{ background:'#f9fafb', borderRadius:10, border:'1px solid #e5e7eb', padding:'14px 18px', display:'flex', alignItems:'center', gap:12 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-        <span style={{ fontSize:11, fontWeight:300, color:'#6b7280', lineHeight:1.5 }}>
-          Locked modules require additional licensing. Contact your XO Sales representative to unlock xoFit™ and xoLab™ for this practice.
-        </span>
+
+      {/* Footnote */}
+      <div style={{ fontSize:11, fontWeight:300, color:'#9ca3af', textAlign:'center', padding:'4px 0' }}>
+        Scheduling and patient communications are managed in xoIris. Open the app to make changes.
       </div>
     </div>
+  );
+
+  // ── xoFit tab (locked — marketing pitch) ──
+  const renderXoFit = () => (
+    <MarketingPanel
+      image="assets/xo-fit-marketing.jpg"
+      color="#05c1bc"
+      name="xoFit"
+      tagline="Advanced frame fitting precision"
+      blurb="Transform the frame fitting and measurement experience. xoFit™ uses advanced optical imaging and intelligent analysis to capture critical facial and frame data with speed and accuracy — supporting confident frame selection and producing lab-ready measurements for precise eyewear fabrication in retail and clinical environments."
+      onContactSales={() => alert('Connect with XO Sales to add xoFit™ to this practice.')}
+    />
+  );
+
+  // ── xoLab tab (locked — marketing pitch) ──
+  const renderXoLab = () => (
+    <MarketingPanel
+      image="assets/xo-lab-marketing.jpg"
+      color="#75d647"
+      name="xoLab"
+      tagline="Precision in-office eyewear finishing"
+      punchline="Small footprint. Big revenue impact."
+      blurb="xoLab™ brings professional eyewear finishing into your practice — delivering finished eyewear on site, as fast as same day."
+      onContactSales={() => alert('Connect with XO Sales to add xoLab™ to this practice.')}
+    />
   );
 
   // ── Reviews tab ──
@@ -468,10 +529,34 @@ function DoctorProfile({ doc, onBack, accent }) {
           </button>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:20 }}>
-          <div style={{ width:72, height:72, borderRadius:'50%', background:`linear-gradient(135deg,${accent},#155bcc)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, fontWeight:700, color:'white', flexShrink:0 }}>{doc.initials}</div>
+          <div style={{ position:'relative', flexShrink:0 }}>
+            <div style={{ width:72, height:72, borderRadius:'50%', background:`linear-gradient(135deg,${accent},#155bcc)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, fontWeight:700, color:'white' }}>{doc.initials}</div>
+            {doc.isMe && (
+              <button
+                onClick={()=>alert('Photo upload — your profile only')}
+                title="Upload photo"
+                style={{
+                  position:'absolute', bottom:-2, right:-2, width:26, height:26, borderRadius:'50%',
+                  background:'#fff', border:'2px solid #fff', boxShadow:'0 2px 6px rgba(0,0,0,0.18)',
+                  cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                  padding:0, transition:'transform 0.15s'
+                }}
+                onMouseEnter={e=>{ e.currentTarget.style.transform='scale(1.08)'; }}
+                onMouseLeave={e=>{ e.currentTarget.style.transform='none'; }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              </button>
+            )}
+          </div>
           <div style={{ flex:1 }}>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
               <div style={{ fontSize:20, fontWeight:700, color:'#111827' }}>{doc.name}</div>
+              {doc.isMe && (
+                <span style={{ fontSize:9, fontWeight:700, padding:'3px 7px', borderRadius:5, background:`${accent}15`, color:accent, textTransform:'uppercase', letterSpacing:'0.08em' }}>Your Profile</span>
+              )}
               <span style={{ fontSize:9, fontWeight:700, padding:'3px 8px', borderRadius:20, background: doc.status==='Active'?'#dcfce7':'#fef3c7', color: doc.status==='Active'?'#16a34a':'#d97706', textTransform:'uppercase', letterSpacing:'0.06em' }}>{doc.status}</span>
               <span style={{ fontSize:9, fontWeight:700, padding:'3px 8px', borderRadius:20, background:'#eff6ff', color:'#2563eb', textTransform:'uppercase', letterSpacing:'0.06em' }}>{doc.shift}</span>
             </div>
@@ -507,7 +592,9 @@ function DoctorProfile({ doc, onBack, accent }) {
         {tab==='contact'     && renderContact()}
         {tab==='credentials' && renderCredentials()}
         {tab==='schedule'    && renderSchedule()}
-        {tab==='modules'     && renderModules()}
+        {tab==='xoiris'      && renderXoIris()}
+        {tab==='xofit'       && renderXoFit()}
+        {tab==='xolab'       && renderXoLab()}
         {tab==='reviews'     && renderReviews()}
       </div>
     </div>
@@ -665,9 +752,28 @@ function DoctorsPage({ tweaks }) {
             )}
 
             <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12, paddingRight:24 }}>
-              <div style={{ width:44, height:44, borderRadius:'50%', background:`linear-gradient(135deg,${accent},#155bcc)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700, color:'white', flexShrink:0 }}>{doc.initials}</div>
+              <div style={{ position:'relative', flexShrink:0 }}>
+                <div style={{ width:44, height:44, borderRadius:'50%', background:`linear-gradient(135deg,${accent},#155bcc)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700, color:'white' }}>{doc.initials}</div>
+                {doc.isMe && (
+                  <div title="Upload photo" style={{
+                    position:'absolute', bottom:-2, right:-2, width:18, height:18, borderRadius:'50%',
+                    background:'#fff', border:'2px solid #fff', boxShadow:'0 1px 4px rgba(0,0,0,0.15)',
+                    display:'flex', alignItems:'center', justifyContent:'center'
+                  }}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </div>
+                )}
+              </div>
               <div style={{ minWidth:0 }}>
-                <div style={{ fontSize:13, fontWeight:700, color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{doc.name}</div>
+                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                  <div style={{ fontSize:13, fontWeight:700, color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{doc.name}</div>
+                  {doc.isMe && (
+                    <span style={{ fontSize:8, fontWeight:700, padding:'2px 5px', borderRadius:4, background:`${accent}15`, color:accent, textTransform:'uppercase', letterSpacing:'0.08em', flexShrink:0 }}>You</span>
+                  )}
+                </div>
                 <div style={{ fontSize:11, fontWeight:300, color:'#6b7280' }}>{doc.specialty}</div>
               </div>
             </div>
