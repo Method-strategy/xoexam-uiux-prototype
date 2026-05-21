@@ -37,7 +37,7 @@ const PATIENT_EXAM_TYPES = [
   { id:'visual-acuity', name:'Visual Acuity Exam' },
   { id:'color-vision', name:'Color Vision Test' },
   { id:'visual-field', name:'Visual Field Exam' },
-  { id:'aberrometer', name:'Aberrometer Exam' },
+  { id:'aberrometer', name:'Wavefront Aberrometry' },
   { id:'contrast-sensitivity', name:'Contrast Sensitivity' },
   { id:'extraocular-motility', name:'Extraocular Motility' },
   { id:'pupillometry', name:'Pupillometry Test' },

@@ -102,7 +102,7 @@ Wrapper: `<ExamShell>` with three phases (`ready` = eye-selection · `testing` =
 
 `SimpleTestShell` is **not** copied — it stays in `RemainingTests.jsx`. The alias `const WavefrontAberrometer = AberrometerTest;` and the `AberrometerTest` function itself are removed from `RemainingTests.jsx` and from its `Object.assign(window, {…})` export list.
 
-Routing in `xoExam Prototype.html`:
+Routing in `index.html`:
 ```jsx
 case 'aberrometer':           return <WavefrontAberrometryTest {...props}/>;
 case 'wavefront':             return <WavefrontAberrometryTest {...props}/>;  // alias case → same component
@@ -173,7 +173,7 @@ case 'wavefront':             return <WavefrontAberrometryTest {...props}/>;  //
 ## F. What MUST NOT carry over from `RemainingTests.jsx`
 
 - `SimpleTestShell` — stays in `RemainingTests.jsx` for other tests.
-- The `WavefrontAberrometer` alias line — `xoExam Prototype.html` is updated instead to route both cases to `WavefrontAberrometryTest`.
+- The `WavefrontAberrometer` alias line — `index.html` is updated instead to route both cases to `WavefrontAberrometryTest`.
 - `AberrometerTest` function — removed from `RemainingTests.jsx` entirely; removed from its `window` export.
 - Any cancel modal — ExamShell owns this.
 

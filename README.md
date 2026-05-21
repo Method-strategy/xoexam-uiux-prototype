@@ -14,7 +14,7 @@ Designed by [Method Marketing Agency](https://methoddigitalmarketing.com).
 
 3. **`briefs/`** — per-test clinical specifications. Currently contains `VisualField_Clinical_Spec_v2.md` and `WavefrontAberrometry_Clinical_Spec_v2.md`. New entries are added as remaining tests reach clinical fidelity.
 
-4. **`xoExam Prototype.html`** — the live prototype. Open directly in a browser (Chrome/Edge recommended). No build step required.
+4. **`index.html`** — the live prototype. Open directly in a browser (Chrome/Edge recommended). No build step required.
 
 > **Older versioned docs are retained for reference.** Files like `…Specification v0.1.8.docx` and `…Development Brief 05-18-2026 v0.1.8.docx` remain in the repo so the evolution of the spec is traceable. Always read the highest-numbered version first.
 
@@ -24,7 +24,7 @@ Designed by [Method Marketing Agency](https://methoddigitalmarketing.com).
 
 | Path | Contents |
 |---|---|
-| `xoExam Prototype.html` | Main entry point — single-file React + Babel CDN prototype |
+| `index.html` | Main entry point — single-file React + Babel CDN prototype |
 | `components/` | All React component files (`.jsx`), loaded by the prototype |
 | `assets/` | Logos, marketing imagery, test-specific icons |
 | `briefs/` | Per-test clinical specifications |
