@@ -13,13 +13,13 @@ const PATIENTS = [
 ];
 
 const TEST_RESULTS = [
-  { id:'1', name:'Visual Acuity Test',      date:'15 Oct 2024', result:'20/20 OD, 20/25 OS',          status:'Normal', doctor:'Dr. Sarah Chen',   duration:'15 min',
+  { id:'1', name:'Visual Acuity',           date:'15 Oct 2024', result:'20/20 OD, 20/25 OS',          status:'Normal', doctor:'Dr. Sarah Chen',   duration:'15 min',
     details:{ rightEye:{ label:'OD', value:'20/20', note:'Excellent VA' }, leftEye:{ label:'OS', value:'20/25', note:'Mild reduction, correctable' }, recommendation:'Consider glasses for distance viewing', technician:'Sarah Miller', method:'Snellen Chart at 20 feet' } },
   { id:'2', name:'Intraocular Pressure',     date:'15 Oct 2024', result:'14 mmHg OD, 15 mmHg OS',     status:'Normal', doctor:'Dr. Sarah Chen',   duration:'10 min',
     details:{ rightEye:{ label:'OD', value:'14 mmHg', note:'Within normal range' }, leftEye:{ label:'OS', value:'15 mmHg', note:'Within normal range' }, recommendation:'Continue annual monitoring. No signs of glaucoma.', technician:'Michael Chen', method:'Goldmann Applanation Tonometry' } },
-  { id:'3', name:'Visual Field Test',        date:'20 Sep 2024', result:'No defects detected',         status:'Normal', doctor:'Dr. Michael Ross',  duration:'20 min',
+  { id:'3', name:'Visual Field',             date:'20 Sep 2024', result:'No defects detected',         status:'Normal', doctor:'Dr. Michael Ross',  duration:'20 min',
     details:{ rightEye:{ label:'OD', value:'Sensitivity 98%', note:'Full visual field' }, leftEye:{ label:'OS', value:'Sensitivity 97%', note:'Full visual field' }, recommendation:'Excellent results. Continue routine monitoring.', technician:'Emma Watson', method:'Humphrey VF 24-2' } },
-  { id:'4', name:'Color Vision Test',        date:'20 Sep 2024', result:'Normal color perception',     status:'Normal', doctor:'Dr. Michael Ross',  duration:'8 min',
+  { id:'4', name:'Color Vision',             date:'20 Sep 2024', result:'Normal color perception',     status:'Normal', doctor:'Dr. Michael Ross',  duration:'8 min',
     details:{ rightEye:{ label:'Score', value:'24/24 correct', note:'All Ishihara plates correct' }, leftEye:{ label:'Type', value:'Trichromatic', note:'No deficiency detected' }, recommendation:'Normal trichromatic vision', technician:'David Lee', method:'Ishihara 24-plate' } },
 ];
 
@@ -34,19 +34,19 @@ const PAST_APPTS = [
 ];
 
 const PATIENT_EXAM_TYPES = [
-  { id:'visual-acuity', name:'Visual Acuity Exam' },
-  { id:'color-vision', name:'Color Vision Test' },
-  { id:'visual-field', name:'Visual Field Exam' },
+  { id:'visual-acuity', name:'Visual Acuity' },
+  { id:'color-vision', name:'Color Vision' },
+  { id:'visual-field', name:'Visual Field' },
   { id:'aberrometer', name:'Wavefront Aberrometry' },
   { id:'contrast-sensitivity', name:'Contrast Sensitivity' },
   { id:'extraocular-motility', name:'Extraocular Motility' },
-  { id:'pupillometry', name:'Pupillometry Test' },
-  { id:'refraction', name:'Refraction Test' },
-  { id:'binocular-vision', name:'Binocular Vision Test' },
-  { id:'accommodation', name:'Accommodation Test' },
-  { id:'convergence', name:'Convergence Test' },
-  { id:'keratometry', name:'Keratometry Test' },
-  { id:'tear-film', name:'Tear Film Test' },
+  { id:'pupillometry', name:'Pupillometry' },
+  { id:'refraction', name:'Refraction' },
+  { id:'binocular-vision', name:'Binocular Vision' },
+  { id:'accommodation', name:'Accommodation' },
+  { id:'convergence', name:'Convergence' },
+  { id:'keratometry', name:'Keratometry' },
+  { id:'tear-film', name:'Tear Film' },
   { id:'visual-reaction-time', name:'Visual Reaction Time' },
   { id:'eye-tracking-accuracy', name:'Eye Tracking Accuracy' },
   { id:'fixation-stability', name:'Fixation Stability' },

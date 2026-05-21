@@ -1,0 +1,21 @@
+Current name,Proposed UI label,Notes
+Wavefront Aberrometry,Wavefront Aberrometry,Already bare — no change
+Visual Field Exam,Visual Field,
+Visual Acuity Exam,Visual Acuity,
+Extraocular Motility Exam,Extraocular Motility,EOM is the common doctor shorthand
+Contrast Sensitivity Exam,Contrast Sensitivity,
+Confrontation Exam,Confrontation,Full clinical name is Confrontation Visual Field; keep bare in UI
+Eyes Converging Exam,Eyes Converging,Name itself is awkward — Convergence is the standard clinical term; recommend merging into Convergence
+Color Vision Test,Color Vision,
+Pupillometry Test,Pupillometry,
+Tear Film Test,Tear Film,
+Visual Reaction Time Test,Visual Reaction Time,
+Eye Tracking Accuracy Test,Eye Tracking Accuracy,
+Fixation Stability Test,Fixation Stability,
+Binocular Vision Test,Binocular Vision,
+Convergence Test,Convergence,
+Accommodation Test,Accommodation,
+Keratometry Test,Keratometry,
+Refraction Test,Refraction,
+AI Pattern Recognition Test,AI Pattern Recognition,
+Esterman Binocular Functional Test,Esterman Binocular,Or keep full proper name; Esterman is the established name of the protocol

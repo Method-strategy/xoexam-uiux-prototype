@@ -46,7 +46,7 @@ function RefractionTest({ onBack, tweaks }) {
         <button onClick={onBack} style={{ width:32, height:32, borderRadius:8, border:'1.5px solid #e5e7eb', background:'#f9fafb', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#374151' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
-        <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>Refraction Test</div>
+        <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>Refraction</div>
         <div style={{ flex:1 }}/>
         {/* Phase toggle */}
         <div style={{ display:'flex', background:'#f3f4f6', borderRadius:20, padding:3, gap:2 }}>
@@ -338,7 +338,7 @@ function ContrastSensitivityTest({ onBack, tweaks }) {
     <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:40 }}>
       <div style={{ background:'#fff', borderRadius:16, border:'1.5px solid #e5e7eb', padding:48, maxWidth:480, width:'100%', textAlign:'center', boxShadow:'0 4px 24px rgba(0,0,0,0.07)' }}>
         <div style={{ width:72, height:72, borderRadius:'50%', background:`${accent}15`, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 24px', fontSize:32 }}>👁</div>
-        <h2 style={{ fontSize:22, fontWeight:700, color:'#111827', margin:'0 0 12px' }}>Contrast Sensitivity Test</h2>
+        <h2 style={{ fontSize:22, fontWeight:700, color:'#111827', margin:'0 0 12px' }}>Contrast Sensitivity</h2>
         <p style={{ fontSize:13, fontWeight:300, color:'#6b7280', lineHeight:1.6, margin:'0 0 32px' }}>
           This test measures your ability to distinguish between different shades of gray using the Pelli-Robson chart. Letters gradually become lighter as you progress through the chart.
         </p>
@@ -513,7 +513,7 @@ function ContrastSensitivityTest({ onBack, tweaks }) {
         {/* Header */}
         <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:24 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <h2 style={{ fontSize:20, fontWeight:700, color:'#111827', margin:0 }}>Contrast Sensitivity Test Results</h2>
+            <h2 style={{ fontSize:20, fontWeight:700, color:'#111827', margin:0 }}>Contrast Sensitivity Results</h2>
             <div style={{ display:'flex', gap:10 }}>
               <button style={{ padding:'8px 18px', borderRadius:9, border:`1.5px solid ${accent}`, background:`${accent}10`, color:accent, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Nunito Sans', sans-serif" }}>EXPORT</button>
               <button style={{ padding:'8px 18px', borderRadius:9, border:`1.5px solid ${accent}`, background:`${accent}10`, color:accent, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Nunito Sans', sans-serif" }}>COMPARE</button>
@@ -582,7 +582,7 @@ function ContrastSensitivityTest({ onBack, tweaks }) {
         <button onClick={() => phase==='testing' ? setShowCancel(true) : onBack()} style={{ width:32, height:32, borderRadius:8, border:'1.5px solid #e5e7eb', background:'#f9fafb', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#374151' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
-        <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>Contrast Sensitivity Test</div>
+        <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>Contrast Sensitivity</div>
         <div style={{ fontSize:11, fontWeight:300, color:'#9ca3af' }}>Pelli-Robson</div>
 
         {/* Eye mode (testing only) */}
@@ -637,7 +637,7 @@ function ContrastSensitivityTest({ onBack, tweaks }) {
       {showCancel && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}>
           <div style={{ background:'#fff', borderRadius:16, padding:32, maxWidth:400, width:'90%', boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}>
-            <h3 style={{ fontSize:16, fontWeight:700, color:'#111827', margin:'0 0 10px' }}>Cancel Contrast Sensitivity Test?</h3>
+            <h3 style={{ fontSize:16, fontWeight:700, color:'#111827', margin:'0 0 10px' }}>Cancel Contrast Sensitivity?</h3>
             <p style={{ fontSize:13, fontWeight:300, color:'#6b7280', margin:'0 0 24px', lineHeight:1.6 }}>Are you sure you want to cancel this examination? All progress will be lost.</p>
             <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
               <button onClick={() => setShowCancel(false)} style={{ padding:'10px 20px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Nunito Sans', sans-serif" }}>Continue Test</button>

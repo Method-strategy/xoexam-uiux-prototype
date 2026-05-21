@@ -63,7 +63,7 @@ function PupillometryTest({ onBack, tweaks }) {
           </svg>
         </div>
         <div>
-          <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>Pupillometry Test</div>
+          <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>Pupillometry</div>
           <div style={{ fontSize:10, fontWeight:300, color:'#9ca3af' }}>Patient: Marcus Williams · {currentLevel.label} condition</div>
         </div>
         <div style={{ flex:1 }}/>

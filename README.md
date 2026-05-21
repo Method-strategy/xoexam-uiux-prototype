@@ -37,12 +37,12 @@ Designed by [Method Marketing Agency](https://methoddigitalmarketing.com).
 
 ---
 
-## Current status (v0.1.9)
+## Current status (v0.2.0)
 
 - **Architecture:** Single-file React 18.3.1 + Babel Standalone (CDN), no build toolchain. Designed for port to **React Native + Kotlin** for the production Android tablet (confirmed via MPR architecture conversation, May 2026).
-- **Tests at clinical fidelity (4 of 19):** Visual Acuity, Color Vision, Visual Fields, **Wavefront Aberrometry** (new in v0.1.9).
-- **Beta scope:** 6 tests. Remaining: Ocular Motility, Pupillometry.
-- **New in v0.1.9:** the first "Doctor sign-off" label pattern, groundwork for the post-beta Roles & Remote Operation design pass.
+- **Tests at clinical fidelity (4 of 19):** Visual Acuity, Color Vision, Visual Fields, Wavefront Aberrometry.
+- **Beta scope:** 6 tests. Remaining: Ocular Motility (v0.2.1), Pupillometry (v0.2.2).
+- **New in v0.2.0:** Test naming convention codified — UI labels use bare nouns (no "Test" / "Exam" suffix). Catalog cleaned: phantom `eyes-converging` entry removed (was a dead duplicate of Convergence). `visual-field-estheryman` re-routed to land directly in Visual Field with the Esterman protocol pre-selected (was previously mis-routed to ConfrontationTest). Catalog now 19 tests.
 - **Live deployment:** [xoexam-uiux-main.netlify.app](https://xoexam-uiux-main.netlify.app)
 
 ---

@@ -1,6 +1,7 @@
 
-// RemainingTests.jsx — Binocular, Accommodation, Convergence, Keratometry, TearFilm,
-//                      FixationStability, Aberrometer, Wavefront, Confrontation
+// RemainingTests.jsx — Binocular Vision, Accommodation, Convergence, Keratometry, Tear Film,
+//                      Fixation Stability, Confrontation
+// (Wavefront Aberrometry was extracted to its own standalone file in v0.1.9.)
 
 // ── Generic test shell for simpler tests ──
 function SimpleTestShell({ title, accent, onBack, icon, children }) {
@@ -40,7 +41,7 @@ function BinocularVisionTest({ onBack, tweaks }) {
   const [stereoLevel, setStereoLevel] = React.useState(0);
 
   return (
-    <ExamShell title="Binocular Vision Test" accent={accent} onBack={onBack}
+    <ExamShell title="Binocular Vision" accent={accent} onBack={onBack}
       phase={phase} elapsed={elapsed}
       onBegin={() => setPhase('testing')}
       onFinish={() => setPhase('report')}
@@ -144,7 +145,7 @@ function AccommodationTest({ onBack, tweaks }) {
   };
 
   return (
-    <ExamShell title="Accommodation Test" accent={accent} onBack={onBack}
+    <ExamShell title="Accommodation" accent={accent} onBack={onBack}
       phase={phase} elapsed={elapsed}
       onBegin={() => setPhase('testing')}
       onFinish={() => setPhase('report')}
@@ -228,7 +229,7 @@ function ConvergenceTest({ onBack, tweaks }) {
   const isNormal = breakPoint <= 10 && recoveryPoint <= 15;
 
   return (
-    <ExamShell title="Convergence Test" accent={accent} onBack={onBack}
+    <ExamShell title="Convergence" accent={accent} onBack={onBack}
       phase={phase} elapsed={elapsed}
       onBegin={() => setPhase('testing')}
       onFinish={() => setPhase('report')}
@@ -448,7 +449,7 @@ function TearFilmTest({ onBack, tweaks }) {
   const unit = method === 'tbut' ? 'sec' : 'mm/5min';
 
   return (
-    <ExamShell title="Tear Film Test" accent={accent} onBack={onBack}
+    <ExamShell title="Tear Film" accent={accent} onBack={onBack}
       phase={phase} elapsed={elapsed}
       onBegin={() => setPhase('testing')}
       onFinish={() => setPhase('report')}
@@ -549,7 +550,7 @@ function FixationStabilityTest({ onBack, tweaks }) {
   const fmtTime = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
   return (
-    <ExamShell title="Fixation Stability Test" accent={accent} onBack={onBack}
+    <ExamShell title="Fixation Stability" accent={accent} onBack={onBack}
       phase={phase} elapsed={elapsed}
       onBegin={() => setPhase('testing')}
       onFinish={() => setPhase('report')}
@@ -641,7 +642,7 @@ function ConfrontationTest({ onBack, tweaks }) {
   const allDone = Object.values(eyeResults).every(v => v !== null);
 
   return (
-    <ExamShell title="Confrontation Visual Field" accent={accent} onBack={onBack}
+    <ExamShell title="Confrontation" accent={accent} onBack={onBack}
       phase={phase} elapsed={elapsed}
       onBegin={() => setPhase('testing')}
       onFinish={() => setPhase('report')}

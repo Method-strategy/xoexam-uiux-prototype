@@ -303,7 +303,7 @@ function VF_TransitionPrompt({ fromEye, toEye, sequence, currentIndex, archive, 
 // MAIN COMPONENT
 // ────────────────────────────────────────────────────────────────
 
-function VisualFieldTest({ onBack, tweaks }) {
+function VisualFieldTest({ onBack, tweaks, defaultPattern }) {
   const accent = tweaks?.accentColor || '#1f8eff';
   const reliabilityPreset = tweaks?.vfReliability === 'strict' ? 'strict' : 'standard';
   const defaultStartEye = tweaks?.vfDefaultStartEye === 'OS' ? 'OS' : 'OD';
@@ -318,6 +318,31 @@ function VisualFieldTest({ onBack, tweaks }) {
   const [protocolEye, setProtocolEye] = React.useState(null);
   const [pattern, setPattern] = React.useState(null);
   const [showConfig, setShowConfig] = React.useState(false);
+
+  // ── Direct-launch pre-selection ───────────────────────────────────
+  // When a catalog entry routes here with a `defaultPattern` prop set
+  // (e.g. the top-level "Esterman Binocular" launcher in TestSelection.jsx),
+  // pre-select that pattern on mount so the doctor lands directly on the
+  // foveal calibration step instead of having to walk through eye-selection
+  // and pattern-selection sub-steps. Binocular patterns force protocolEye='OU'
+  // per the architecture rule. Monocular launches just pre-select the
+  // pattern and leave the doctor on the eye-selection step.
+  React.useEffect(() => {
+    if (!defaultPattern) return;
+    const monoDef = VF_MONOCULAR_PATTERNS.find(p => p.id === defaultPattern);
+    const binoDef = VF_BINOCULAR_PATTERNS.find(p => p.id === defaultPattern);
+    const def = monoDef || binoDef;
+    if (!def) return;
+    setPattern(defaultPattern);
+    if (def.kind === 'binocular') {
+      setProtocolEye('OU');
+      setVfStep('foveal');
+    } else {
+      // Monocular: keep at eye-selection so the doctor still picks OD/OS/both
+      setVfStep('eye-selection');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [cfg, setCfg] = React.useState({
     stimulusSize:'III', strategy:'SITA-Fast',
     brightness:50, contrast:50, resultFormat:'standard'
@@ -1138,7 +1163,7 @@ function VisualFieldTest({ onBack, tweaks }) {
 
   return (
     <ExamShell
-      title="Visual field"
+      title="Visual Field"
       accent={accent}
       onBack={onBack}
       patientName="Marcus Williams"

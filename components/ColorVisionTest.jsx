@@ -771,7 +771,7 @@ function ColorVisionTest({ onBack, tweaks }) {
 
   const renderD15 = () => (
     <ExamShell
-      title="Color vision — D-15"
+      title="Color Vision — D-15"
       accent={accent}
       onBack={() => { setTestMode(null); setPhase('selection'); d15Reset(); }}
       patientName="Marcus Williams"
@@ -928,7 +928,7 @@ function ColorVisionTest({ onBack, tweaks }) {
   // when transitions cleared testMode on the way to the report.)
   if (phase === 'selection') return (
     <ExamShell
-      title="Color vision"
+      title="Color Vision"
       accent={accent}
       onBack={onBack}
       patientName="Marcus Williams"
@@ -1019,7 +1019,7 @@ function ColorVisionTest({ onBack, tweaks }) {
       else if (answer.length < 2) setAnswer(a => a + k);
     };
     return (
-      <ExamShell title="Color vision — Ishihara" accent={accent} onBack={() => { setPhase('selection'); setTestMode(null); setCurrentPlate(0); setResponses([]); setIshiharaResults({ OD:null, OS:null, OU:null }); setD15Results({ OD:null, OS:null, OU:null }); }}
+      <ExamShell title="Color Vision — Ishihara" accent={accent} onBack={() => { setPhase('selection'); setTestMode(null); setCurrentPlate(0); setResponses([]); setIshiharaResults({ OD:null, OS:null, OU:null }); setD15Results({ OD:null, OS:null, OU:null }); }}
         phase="testing" elapsed={elapsed}
         onFinish={() => setPhase('results')}
         rightPanel={
@@ -1206,7 +1206,7 @@ function ColorVisionTest({ onBack, tweaks }) {
   };
 
   return (
-    <ExamShell title="Color vision — results" accent={accent} onBack={onBack}
+    <ExamShell title="Color Vision — Results" accent={accent} onBack={onBack}
       phase="report"
       onNewTest={resetAllAndSelection}
     >

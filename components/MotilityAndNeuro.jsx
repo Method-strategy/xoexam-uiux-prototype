@@ -85,7 +85,7 @@ function ExtraocularMotilityTest({ onBack, tweaks }) {
   };
 
   if (step === 'setup') return (
-    <ExamShell title="Extraocular Motility Test" accent={accent} onBack={onBack} phase="ready" onBegin={() => setStep('testing')}>
+    <ExamShell title="Extraocular Motility" accent={accent} onBack={onBack} phase="ready" onBegin={() => setStep('testing')}>
       <div style={{ padding:32, display:'flex', flexDirection:'column', alignItems:'center', gap:20 }}>
         <div style={{ fontSize:18, fontWeight:700, color:'#111827' }}>Extraocular Motility (EOM)</div>
         <div style={{ fontSize:13, fontWeight:300, color:'#6b7280', maxWidth:480, textAlign:'center', lineHeight:1.7 }}>
@@ -98,7 +98,7 @@ function ExtraocularMotilityTest({ onBack, tweaks }) {
   );
 
   if (step === 'testing') return (
-    <ExamShell title="Extraocular Motility Test" accent={accent} onBack={onBack} phase="testing"
+    <ExamShell title="Extraocular Motility" accent={accent} onBack={onBack} phase="testing"
       onFinish={() => setStep('report')}
       rightPanel={
         <div style={{ padding:16 }}>
