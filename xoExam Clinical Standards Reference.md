@@ -1,6 +1,6 @@
 # xoExam™ UI/UX — Clinical Standards Reference
 ## A guide for the clinical team evaluating the prototype
-### Method Marketing Agency · May 2026 · Version 0.2.3
+### Method Marketing Agency · May 2026 · Version 0.2.5
 
 ---
 
@@ -22,7 +22,7 @@ Tests not listed in this guide are at **visual placeholder fidelity**: the UI lo
 
 ---
 
-## Scope of clinical fidelity in v0.2.3
+## Scope of clinical fidelity in v0.2.5
 
 | Test | Reference standard | Clinical-fidelity version |
 |---|---|---|
@@ -31,8 +31,9 @@ Tests not listed in this guide are at **visual placeholder fidelity**: the UI lo
 | Visual Fields | Humphrey Field Analyzer (HFA) / Goldmann | v0.1.8 |
 | Wavefront Aberrometry | Hartmann-Shack sensor / Zernike polynomial output | v0.1.9 |
 | Extraocular Motility | International 0 to ±4 EOM grading | v0.2.1 |
+| Pupillometry | Winn 1994 age-banded norms · NeurOptics NPi-200 reference · RAPD grading | v0.2.5 |
 
-Pupillometry will join this list at v0.2.5; the remaining 13 tests are visual-fidelity placeholders awaiting their own clinical rebuilds.
+This closes the originally-defined beta scope. The remaining 13 tests in the catalog are visual-fidelity placeholders awaiting their own clinical rebuilds in subsequent releases.
 
 ---
 
@@ -216,6 +217,62 @@ Two complementary protocols:
 
 ---
 
+## 6. Pupillometry (v0.2.5)
+
+### Reference standard
+Four overlapping clinical references for pupillometry:
+
+- **Static pupil size norms:** Winn et al. 1994 — age-banded mean ± 1 SD pupil diameter under scotopic, mesopic, and photopic conditions. Six age bands (20–29 / 30–39 / 40–49 / 50–59 / 60–69 / 70+).
+- **Anisocoria interpretation:** light-vs-dark differential rule — anisocoria that varies between light conditions by ≥ 0.3 mm is pathological (sympathetic if worse-in-dark, parasympathetic if worse-in-light).
+- **NPi (Neurological Pupil index):** NeurOptics NPi-200 reference — 0–5 composite score from baseline size, constriction velocity, latency, and dilation velocity. ≥ 3.0 normal · < 3.0 abnormal · asymmetry > 0.7 between eyes is a warning sign.
+- **RAPD grading:** standard 6-grade clinical scale (None / Trace / 1+ / 2+ / 3+ / 4+ amaurotic), Marcus Gunn pupil testing convention.
+
+### What's implemented
+- **Eye sequence:** OD-first bilateral. OU runs OD then OS as discrete monocular captures with full-screen transition prompt + patient-repositioning copy + eye breadcrumb. OD-only / OS-only also selectable.
+- **Three-phase flow** with internal sub-test state machine inside testing:
+  ```
+  ready (eye mode + sub-test config + patient age)
+    → testing (static-OD → static-OS → dynamic-OD → dynamic-OS → swinging-flashlight)
+    → report
+  ```
+- **Patient age input** on the setup screen drives the age-banded reference range lookup. Age band annotation surfaces on the report and on the right sidebar during testing.
+- **Sub-tests:**
+  - **Static pupil size** (required) — three light conditions per eye (scotopic / mesopic / photopic), each with its lux annotation, age-banded reference range, and deviation flag if the captured value falls outside the range
+  - **Dynamic light reflex** (default on) — stimulus-flash animation drives the iris viewer; live PLR curve chart renders the time-course of the response; six summary metrics surfaced as tiles (Baseline / Minimum / Constriction % / Latency / Constriction velocity / T75 redilation); **NPi computed and surfaced per eye** in a prominent severity-coded tile (green ≥ 3.0 / amber 2.5–3.0 / red < 2.5)
+  - **Swinging flashlight** (default on; requires both eyes tested) — alternating stimulus animation across the two eyes; per-eye RAPD grade selector exposing all six grades with descriptive copy
+- **Iris viewer:** animated iris with breathing pupil, calibrated pupil size per light condition; stimulus flash overlay drives the dynamic capture and the swinging flashlight animation; dark iris with light surrounding chrome (clinical convention — pupillometry happens in a darkened headset interior, but the controller UI itself is light)
+- **Static measurements table** (3 light conditions × eyes tested):
+  - One row per light condition with the lux annotation and the age-banded reference range
+  - Captured value per eye with deviation flag (`↯` icon) when outside the reference range
+  - Anisocoria column (when both eyes tested) per light condition, color-coded by severity (green < 0.4 mm / amber 0.4–1.0 mm / red > 1.0 mm)
+  - Dedicated **light/dark differential row** at the bottom showing |aniso(dark) − aniso(light)|, flagged red at ≥ 0.3 mm with the "≥ 0.3 mm = pathological pattern" annotation
+- **Dynamic measurements card** per eye in the report:
+  - PLR curve chart with stimulus marker, baseline reference line, peak-constriction annotation
+  - Six summary metric tiles
+  - NPi pill with severity tint
+- **RAPD assessment card** per eye in the report with the selected grade and full clinical descriptor
+- **CN III / Horner's / RAPD clinical flag** — prominent red surface, surfaces automatically when any of the following patterns are detected:
+  - **Optic nerve disease pattern:** RAPD ≥ 1+ on either eye → "Relative afferent pupillary defect — {eye}" flag with neuro-ophthalmic referral copy
+  - **Sympathetic pathway pattern:** anisocoria greater in dark by ≥ 0.3 mm → "Anisocoria greater in dark — sympathetic pattern" flag with cocaine / apraclonidine testing recommendation
+  - **Parasympathetic pathway pattern:** anisocoria greater in light by ≥ 0.3 mm → "Anisocoria greater in light — parasympathetic pattern" flag with CN III palsy / Adie's / pharmacologic mydriasis differential
+  - **Neuro pattern:** NPi < 2.5 on either eye → "Reduced neurological pupil index — {eye}" flag with intracranial / brainstem / pharmacologic differential
+- **Patient Classification banner** in the report with worst-finding-drives-bottom-line severity (Normal / Mild / Significant) and per-finding summary pills (Anisocoria pill · per-eye NPi pills · RAPD pill)
+- **Clinical Interpretation card** with severity tint, summary sentence, and bullet-list of specific findings (each age-banded deviation, each pathological anisocoria pattern, each NPi finding, each RAPD finding listed individually)
+- **Age-banded reference values card** in the report (full Winn 1994 table, with the patient's age band highlighted) so the printed report stands alone
+- **Session notes** textarea (sidebar during testing, dedicated card in the report)
+- **Doctor sign-off** label above the Certify & close primary action
+
+### Open clinical questions (flagged for engineering)
+- **Dynamic data shape from firmware.** Does the headset emit a time-series of pupil diameter at ~30 Hz, or only summary metrics (baseline / min / latency / etc.)? Determines whether the UI re-draws the real PLR curve or just renders the summary numbers and a stylised reference curve.
+- **NPi computation location.** Computed firmware-side per NeurOptics convention, or computed UI/cloud-side from the time-series? Most likely firmware-side.
+- **Swinging flashlight automation.** Does the headset present the alternating light stimulus automatically (UI is a passive viewer + grade-recorder), or is the technician manually triggering left/right alternation?
+- **Pupil response clicker.** Pupillometry does not use the patient clicker (the patient is passive). Confirm with engineering.
+- **Pharmacological pupillometry workflow.** Cocaine and apraclonidine tests (Horner's syndrome confirmation) and pilocarpine test (Adie's pupil) follow specific dilation protocols. Out of scope for v0.2.5 but flag if Xenon plans to support these.
+- **Ambient light measurement.** Does the headset measure actual ambient lux inside the device, or does the UI assume a calibrated dark interior? Affects whether "scotopic / mesopic / photopic" is a measured condition or a configured assumption.
+- **Adaptation time enforcement.** Scotopic measurements require ≥ 5 minutes of dark adaptation for valid results. Does the firmware enforce this timing, or does the UI need to display a countdown timer?
+
+---
+
 ## Cross-cutting clinical conventions
 
 These apply consistently across every clinically-faithful test in xoExam.
@@ -255,14 +312,13 @@ The following tests are clickable, walk through their basic UI, and integrate wi
 - Binocular Vision
 - Convergence
 - Contrast Sensitivity (Pelli-Robson visual fidelity only; clinical scoring not yet implemented)
-- Pupillometry (slated for v0.2.5 clinical rebuild)
 - Visual Reaction Time
 - Eye Tracking Accuracy
 - Fixation Stability
 - Tear Film
 - AI Pattern Recognition
 
-These will be brought to clinical fidelity in priority order. The clinical evaluation team's input on which ones to prioritize after Pupillometry is welcomed.
+These will be brought to clinical fidelity in priority order. With the beta scope now closed, the clinical evaluation team's input on which of the remaining 13 tests to prioritize next is welcomed.
 
 ---
 
@@ -279,4 +335,4 @@ These will be brought to clinical fidelity in priority order. The clinical evalu
 
 This document is updated at each clinical-fidelity milestone. If the clinical evaluation team identifies a deviation from current published standards, please flag it for the next revision. Contact Method Marketing Agency through the standard project channels.
 
-*Method Marketing Agency · xoExam UI/UX Clinical Standards Reference · v0.2.3 · May 22, 2026*
+*Method Marketing Agency · xoExam UI/UX Clinical Standards Reference · v0.2.5 · May 22, 2026*
