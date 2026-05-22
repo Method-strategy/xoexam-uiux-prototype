@@ -8,11 +8,11 @@ Designed by [Method Marketing Agency](https://methoddigitalmarketing.com).
 
 ## Start here (in order)
 
-1. **`xoExam UI-UX Engineering Handoff Specification v0.1.9.docx`** — master handoff document, current version. Read this first. Covers the engineering quick start, ExamShell component contract, integration touchpoints, the open decisions flagged as the engineering kickoff agenda, regulatory acknowledgment, React-Native portability notes, and the full asset inventory.
+1. **`xoExam UI-UX Engineering Handoff Specification v0.2.1.docx`** — master handoff document, current version. Read this first. Covers the engineering quick start, ExamShell component contract, integration touchpoints, the open decisions flagged as the engineering kickoff agenda, regulatory acknowledgment, React-Native portability notes, and the full asset inventory.
 
-2. **`CLAUDE.md`** — project memory and source of truth. Design system, color tokens, typography scale, component interface contract, version log (v0.1.0 → v0.1.9), and the architectural rules that govern the prototype.
+2. **`CLAUDE.md`** — project memory and source of truth. Design system, color tokens, typography scale, component interface contract, version log (v0.1.0 → v0.2.1), and the architectural rules that govern the prototype.
 
-3. **`briefs/`** — per-test clinical specifications. Currently contains `VisualField_Clinical_Spec_v2.md` and `WavefrontAberrometry_Clinical_Spec_v2.md`. New entries are added as remaining tests reach clinical fidelity.
+3. **`briefs/`** — per-test clinical specifications. Currently contains `VisualField_Clinical_Spec_v2.md`, `WavefrontAberrometry_Clinical_Spec_v2.md`, and `ExtraocularMotility_Clinical_Spec_v2.md`. New entries are added as remaining tests reach clinical fidelity.
 
 4. **`index.html`** — the live prototype. Open directly in a browser (Chrome/Edge recommended). No build step required.
 
@@ -37,12 +37,12 @@ Designed by [Method Marketing Agency](https://methoddigitalmarketing.com).
 
 ---
 
-## Current status (v0.2.0)
+## Current status (v0.2.1)
 
-- **Architecture:** Single-file React 18.3.1 + Babel Standalone (CDN), no build toolchain. Designed for port to **React Native + Kotlin** for the production Android tablet (confirmed via MPR architecture conversation, May 2026).
-- **Tests at clinical fidelity (4 of 19):** Visual Acuity, Color Vision, Visual Fields, Wavefront Aberrometry.
-- **Beta scope:** 6 tests. Remaining: Ocular Motility (v0.2.1), Pupillometry (v0.2.2).
-- **New in v0.2.0:** Test naming convention codified — UI labels use bare nouns (no "Test" / "Exam" suffix). Catalog cleaned: phantom `eyes-converging` entry removed (was a dead duplicate of Convergence). `visual-field-estheryman` re-routed to land directly in Visual Field with the Esterman protocol pre-selected (was previously mis-routed to ConfrontationTest). Catalog now 19 tests.
+- **Architecture:** Single-file React 18.3.1 + Babel Standalone (CDN), no build toolchain. Designed for port to **React Native + Kotlin** for the production Android tablet.
+- **Tests at clinical fidelity (5 of 19):** Visual Acuity, Color Vision, Visual Fields, Wavefront Aberrometry, **Extraocular Motility** (new in v0.2.1).
+- **Beta scope:** 6 tests. Remaining: Pupillometry (v0.2.2) — closes beta scope.
+- **New in v0.2.1:** Extraocular Motility rebuilt at clinical fidelity — international 0 to ±4 grading scale replacing the legacy 1–5, 9 cardinal positions including primary gaze, primary + secondary muscle/CN mapping (CN IV detection at down-and-in gaze preserved), H-pattern motility diagram, sub-test state machine for versions / pursuit / saccades / ductions.
 - **Live deployment:** [xoexam-uiux-main.netlify.app](https://xoexam-uiux-main.netlify.app)
 
 ---
