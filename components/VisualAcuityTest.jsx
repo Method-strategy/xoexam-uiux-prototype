@@ -21,6 +21,53 @@ const VA_LETTER_POOL = ['A','B','C','D','E','F','G','H','K','L','N','O','P','R',
 const VA_NUMBER_POOL = ['1','2','3','4','5','6','7','8','9'];
 const VA_E_ROTATIONS = [0, 90, 180, 270]; // legs pointing right, up, left, down
 
+// ── v0.2.3 clinical accuracy additions ──
+// Sloan 10 — the ETDRS standard letter set (10 letters of equal recognition
+// difficulty at the legibility threshold). Used when ETDRS-style scoring is
+// active. The legacy VA_LETTER_POOL above is retained for backward-compatible
+// Snellen chart rendering.
+const VA_SLOAN_10 = ['C','D','H','K','N','O','R','S','V','Z'];
+
+// Snellen-to-LogMAR conversion. LogMAR = log10(denominator/20) for any '20/x'
+// notation. LogMAR is the modern clinical standard for research, longitudinal
+// comparison, and statistical analysis. Returned to 2 decimals.
+//   20/200 → 1.00 · 20/20 → 0.00 · 20/10 → -0.30
+function VA_snellenToLogMAR(snellen) {
+  if (!snellen || snellen === '—') return null;
+  const denom = parseFloat(String(snellen).split('/')[1]);
+  if (!isFinite(denom) || denom <= 0) return null;
+  return Math.log10(denom / 20);
+}
+
+// Format a logMAR value for display. Always 2-decimal, with explicit sign
+// for negative values (so the report doesn't read e.g. '-.3').
+function VA_formatLogMAR(lm) {
+  if (lm === null || lm === undefined || !isFinite(lm)) return '—';
+  return lm.toFixed(2);
+}
+
+// Clinical line-pass rule. Replaces the previous arbitrary 65% threshold with
+// the published clinical convention: "more than half correct." On a 5-letter
+// line, that's >=3/5; on an 8-letter line, >=5/8. Used by getBestVA() and
+// the auto-advance trigger in toggleLetter().
+function VA_lineIsPassed(correct, total) {
+  if (total <= 0) return false;
+  return correct > total / 2;
+}
+
+// Severity band derivation for the Patient Classification banner.
+// Hodapp/AAO-style clinical convention applied to distance VA:
+//   20/20 or better→normal·20/25–20/40→mild·20/50–20/100→moderate·20/200↓→significant
+function VA_getInterp(bestSnellen) {
+  if (!bestSnellen || bestSnellen === '—') return { band:'unscored', tint:'#9ca3af', bg:'#f9fafb', border:'#e5e7eb', text:'No data recorded.' };
+  const denom = parseFloat(String(bestSnellen).split('/')[1]);
+  if (!isFinite(denom)) return { band:'unscored', tint:'#9ca3af', bg:'#f9fafb', border:'#e5e7eb', text:'No data recorded.' };
+  if (denom <= 20)  return { band:'normal',      tint:'#10b981', bg:'#f0fdf4', border:'#bbf7d0', text:'Visual acuity within normal limits (20/20 or better). No reduction detected.' };
+  if (denom <= 40)  return { band:'mild',        tint:'#d97706', bg:'#fffbeb', border:'#fde68a', text:'Mild reduction in distance visual acuity. Consider refractive correction; if best-corrected, monitor.' };
+  if (denom <= 100) return { band:'moderate',    tint:'#ea580c', bg:'#fff7ed', border:'#fed7aa', text:'Moderate reduction in visual acuity. Refractive correction, comprehensive ocular health evaluation, and patient counselling recommended.' };
+  return                  { band:'significant', tint:'#dc2626', bg:'#fef2f2', border:'#fecaca', text:'Significant reduction in visual acuity (20/200 or worse). Comprehensive ocular and neurological evaluation indicated.' };
+}
+
 function randomLetters(count) {
   return [...VA_LETTER_POOL].sort(() => Math.random() - 0.5).slice(0, count);
 }
@@ -174,7 +221,9 @@ function VisualAcuityTest({ onBack, tweaks }) {
   const getBestVA = (em) => {
     for (let i = chartLines.length; i >= 1; i--) {
       const s = getScore(i, em);
-      if (s.correct > 0 && s.pct >= 65) return chartLines[i - 1].va;
+      // v0.2.3: replaced arbitrary >=65% threshold with clinical convention
+      // (more than half correct).
+      if (s.correct > 0 && VA_lineIsPassed(s.correct, s.total)) return chartLines[i - 1].va;
     }
     return '—';
   };
@@ -188,7 +237,7 @@ function VisualAcuityTest({ onBack, tweaks }) {
     const allMarked = next.every(r => r !== null);
     const correct = next.filter(r => r === 'correct').length;
     const pct = Math.round(correct / next.length * 100);
-    if (allMarked && pct >= 65) {
+    if (allMarked && VA_lineIsPassed(correct, next.length)) {
       const nextLine = lineN + 1;
       if (nextLine <= 10) {
         setAdvancingTo(nextLine);
@@ -870,7 +919,12 @@ function VisualAcuityTest({ onBack, tweaks }) {
                   <div style={{ ...reportLabel, marginBottom: 4 }}>Per-Eye Results</div>
                   <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: 0 }}>{eyeLabel}</h3>
                 </div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: accent, fontVariantNumeric: 'tabular-nums' }}>{bestVAEye}</div>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2 }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: accent, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{bestVAEye}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, fontVariantNumeric: 'tabular-nums', letterSpacing: '0.04em' }}>
+                    {VA_formatLogMAR(VA_snellenToLogMAR(bestVAEye))} <span style={{ color: '#9ca3af' }}>logMAR</span>
+                  </div>
+                </div>
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -887,7 +941,7 @@ function VisualAcuityTest({ onBack, tweaks }) {
                     if (!res || !res.some(r => r !== null)) return null;
                     const correct = res.filter(r => r === 'correct').length;
                     const pct = Math.round(correct / res.length * 100);
-                    const passed = pct >= 65;
+                    const passed = VA_lineIsPassed(correct, res.length);
                     const isBest = line.n === bestLineN;
                     return (
                       <tr key={line.n} style={{

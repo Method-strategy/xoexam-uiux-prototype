@@ -114,12 +114,6 @@ function DashboardShell({ activeSection, onNavigate, onLogout, children, tweaks 
 
         <div style={{ flex:1 }}/>
 
-        {/* Back to Login — design nav only */}
-        <button onClick={() => window.__xoGoToLogin && window.__xoGoToLogin()}
-          style={{ padding:'0 12px', height:34, borderRadius:8, border:'1.5px solid #e8eaed', background:'#fff', cursor:'pointer', fontSize:11, fontWeight:300, color:'#9ca3af', fontFamily:"'Nunito Sans', sans-serif", transition:'all 0.15s', flexShrink:0, marginRight:8 }}
-          onMouseEnter={e => { e.currentTarget.style.color='#374151'; e.currentTarget.style.borderColor='#d1d5db'; }}
-          onMouseLeave={e => { e.currentTarget.style.color='#9ca3af'; e.currentTarget.style.borderColor='#e8eaed'; }}
-        >← Login</button>
 
         {/* Connect Device */}
         <button onClick={() => window.__xoOpenScanner && window.__xoOpenScanner()}

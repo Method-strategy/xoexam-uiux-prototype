@@ -12,7 +12,7 @@ Designed by [Method Marketing Agency](https://methoddigitalmarketing.com).
 
 2. **`CLAUDE.md`** — project memory and source of truth. Design system, color tokens, typography scale, component interface contract, version log (v0.1.0 → v0.2.1), and the architectural rules that govern the prototype.
 
-3. **`briefs/`** — per-test clinical specifications. Currently contains `VisualField_Clinical_Spec_v2.md`, `WavefrontAberrometry_Clinical_Spec_v2.md`, and `ExtraocularMotility_Clinical_Spec_v2.md`. New entries are added as remaining tests reach clinical fidelity.
+3. **`briefs/`** — per-test clinical specifications. Currently contains `VisualAcuity_Clinical_Spec_v2.md`, `VisualField_Clinical_Spec_v2.md`, `WavefrontAberrometry_Clinical_Spec_v2.md`, and `ExtraocularMotility_Clinical_Spec_v2.md`. **`xoExam Clinical Standards Reference.md`** at the project root is the clinician-facing summary across all clinical-fidelity tests — read this for an overview of what each test adheres to.
 
 4. **`index.html`** — the live prototype. Open directly in a browser (Chrome/Edge recommended). No build step required.
 
@@ -37,12 +37,12 @@ Designed by [Method Marketing Agency](https://methoddigitalmarketing.com).
 
 ---
 
-## Current status (v0.2.1)
+## Current status (v0.2.3)
 
 - **Architecture:** Single-file React 18.3.1 + Babel Standalone (CDN), no build toolchain. Designed for port to **React Native + Kotlin** for the production Android tablet.
-- **Tests at clinical fidelity (5 of 19):** Visual Acuity, Color Vision, Visual Fields, Wavefront Aberrometry, **Extraocular Motility** (new in v0.2.1).
-- **Beta scope:** 6 tests. Remaining: Pupillometry (v0.2.2) — closes beta scope.
-- **New in v0.2.1:** Extraocular Motility rebuilt at clinical fidelity — international 0 to ±4 grading scale replacing the legacy 1–5, 9 cardinal positions including primary gaze, primary + secondary muscle/CN mapping (CN IV detection at down-and-in gaze preserved), H-pattern motility diagram, sub-test state machine for versions / pursuit / saccades / ductions.
+- **Tests at clinical fidelity (5 of 19):** Visual Acuity (v0.2.3 spec backfill), Color Vision, Visual Fields, Wavefront Aberrometry, Extraocular Motility.
+- **Beta scope:** 6 tests. Remaining: Pupillometry (v0.2.5) — closes beta scope.
+- **New in v0.2.3:** Visual Acuity spec backfill — v2 spec doc written (`briefs/VisualAcuity_Clinical_Spec_v2.md`); LogMAR notation surfaced alongside Snellen in the report; line-pass threshold corrected from arbitrary 65% to clinical convention (more than half correct); Sloan 10 letter set added as `VA_SLOAN_10` for ETDRS-style scoring; severity classification helper (`VA_getInterp`) added for the Patient Classification banner; LogMAR conversion utility (`VA_snellenToLogMAR`).
 - **Live deployment:** [xoexam-uiux-main.netlify.app](https://xoexam-uiux-main.netlify.app)
 
 ---
