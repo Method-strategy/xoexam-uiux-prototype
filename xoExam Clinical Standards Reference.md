@@ -1,6 +1,6 @@
 # xoExam™ UI/UX — Clinical Standards Reference
 ## A guide for the clinical team evaluating the prototype
-### Method Marketing Agency · May 2026 · Version 0.2.5
+### Method Marketing Agency · June 2026 · Version 0.2.6
 
 ---
 
@@ -22,9 +22,11 @@ Tests not listed in this guide are at **visual placeholder fidelity**: the UI lo
 
 ---
 
-## Scope of clinical fidelity in v0.2.5
+## Scope of clinical fidelity in v0.2.6
 
-| Test | Reference standard | Clinical-fidelity version |
+> The xoExam UI/UX ships as one unified build. The right-hand column records *when each test last reached clinical fidelity*, not a separate version number per test.
+
+| Test | Reference standard | Reached clinical fidelity in |
 |---|---|---|
 | Visual Acuity | Snellen + LogMAR conversion · Sloan 10 helper | v0.2.3 |
 | Color Vision | Ishihara plates + D-15 Farnsworth | v0.1.7 |
@@ -32,8 +34,9 @@ Tests not listed in this guide are at **visual placeholder fidelity**: the UI lo
 | Wavefront Aberrometry | Hartmann-Shack sensor / Zernike polynomial output | v0.1.9 |
 | Extraocular Motility | International 0 to ±4 EOM grading | v0.2.1 |
 | Pupillometry | Winn 1994 age-banded norms · NeurOptics NPi-200 reference · RAPD grading | v0.2.5 |
+| Wavefront Refraction | Objective wavefront autorefraction + subjective JCC / MPMVA liquid-lens phoropter | v0.2.6 |
 
-This closes the originally-defined beta scope. The remaining 13 tests in the catalog are visual-fidelity placeholders awaiting their own clinical rebuilds in subsequent releases.
+The remaining tests in the catalog are visual-fidelity placeholders awaiting their own clinical rebuilds in subsequent releases.
 
 ---
 
@@ -273,6 +276,39 @@ Four overlapping clinical references for pupillometry:
 
 ---
 
+## 7. Wavefront Refraction (v0.2.6)
+
+### Reference standard
+The combined digital replacement for the traditional two-instrument refraction workflow. **Objective stage:** wavefront aberrometry used as an autorefractor — the Hartmann-Shack-derived lower-order sphere / cylinder / axis is the objective starting point. **Subjective stage:** liquid-lens digital phoropter following standard manifest-refraction methodology — Maximum Plus to Maximum Visual Acuity (MPMVA) sphere endpoint, Jackson Cross Cylinder (JCC) for cylinder axis then power, fogging to control accommodation, and additive visual-acuity notation. The certified output is a verified spectacle prescription (Rx).
+
+> **This test deliberately makes no clinical claims.** Unlike the other clinically-faithful tests, the report carries **no Patient Classification banner and no interpretive language.** A refraction is a measurement-and-verification workflow, not a screening, so interpretive output is stripped by clinical direction. The Clinical Summary states data only (scans taken, completion, "Final Rx pending clinician certification").
+
+### What's implemented
+- **Two-stage flow** mapped onto the shared three-phase framework:
+  ```
+  entry (full refraction / subjective-only)
+    → objective  (monocular wavefront capture, OD → OS)
+    → subjective (liquid-lens phoropter: setup → sphere/MPMVA → JCC axis → JCC power → [MPMVA-2] → add)
+    → report
+  ```
+- **Objective capture** uses the live eye-scan presentation (dark viewer, breathing pupil, sweep line, rotating centering ring, and a red alignment dot that turns the backdrop green on lock) — not a circular-progress animation. Each eye documents a **scan count (1–3)**; the wavefront retries on movement / blink and averages, and the count communicates measurement reliability to the clinician.
+- **Axis before power (JCC):** enforced by step order — the UI cannot reach cylinder-power refinement until the cylinder axis is confirmed (`jcc-axis` always precedes `jcc-power`).
+- **Fogging control:** after objective capture a fog prompt offers **+0.75 D** with a clinical explanation (relaxes accommodation, prevents over-minusing). Skippable; starting MPMVA sphere = objective sphere + fog.
+- **Sphere compensation note** during cylinder power: "For each −0.50 D CYL added, add +0.25 D SPH to maintain the circle of least confusion."
+- **Rx format discipline:** SPH / CYL always signed + 2 dp; AXIS integer + °; ADD signed with D or "—". No exceptions.
+- **Monocular discipline:** no OU averaging. The objective stage runs OD then OS automatically via breadcrumb + transition modal; the subjective stage refines per eye.
+- **Optotype selector** (Letters / Tumbling E / Tumbling C) drawn as geometric SVG optotypes, shared with the standalone Visual Acuity test — for pediatric, non-literate, or non-Latin-script patients who report orientation rather than naming a glyph. Additive VA notation (e.g. `20/25 +4`) surfaced as best VA so far.
+- **Report:** Final Prescription hero (signed Rx + ADD + BCVA per eye); Objective Results and Subjective Correction two-box (delta from objective → final); wavefront analysis (view rail, 3 mm / 5 mm ring overlay toggle, zoom-scope, color-scale legend); data-only Clinical Summary; **Doctor sign-off** above Certify & close.
+- **Certify & close is a system event:** it certifies and releases the verified Rx to the downstream xoFit fitting/finishing job object. Report sub-label: "Doctor sign-off · releases Rx to job object."
+
+### Open clinical questions (flagged for engineering)
+- **Pass/fail acuity threshold** for the subjective stage currently "more than half correct" — to be validated against a published standard before lock.
+- **Certify → Rx-release wiring:** the certification event must be implemented as the trigger that releases the Rx downstream (system event, not a UI-only action); couples to the role/permissions model.
+- **Patient-facing headset view** for an objective self-administered mode is out of scope here (this is the tablet / technician-doctor view only) — separate scope to define.
+- **Liquid-lens / eye-tracking capability** confirmation for the objective readiness panel values and green-lock timing.
+
+---
+
 ## Cross-cutting clinical conventions
 
 These apply consistently across every clinically-faithful test in xoExam.
@@ -318,7 +354,7 @@ The following tests are clickable, walk through their basic UI, and integrate wi
 - Tear Film
 - AI Pattern Recognition
 
-These will be brought to clinical fidelity in priority order. With the beta scope now closed, the clinical evaluation team's input on which of the remaining 13 tests to prioritize next is welcomed.
+These will be brought to clinical fidelity in priority order. The clinical evaluation team's input on which of the remaining tests to prioritize next is welcomed.
 
 ---
 
@@ -335,4 +371,4 @@ These will be brought to clinical fidelity in priority order. With the beta scop
 
 This document is updated at each clinical-fidelity milestone. If the clinical evaluation team identifies a deviation from current published standards, please flag it for the next revision. Contact Method Marketing Agency through the standard project channels.
 
-*Method Marketing Agency · xoExam UI/UX Clinical Standards Reference · v0.2.5 · May 22, 2026*
+*Method Marketing Agency · xoExam UI/UX Clinical Standards Reference · v0.2.6 · June 2, 2026*

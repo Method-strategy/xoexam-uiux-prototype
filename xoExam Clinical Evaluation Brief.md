@@ -12,9 +12,9 @@
 
 ## What you are evaluating
 
-Six of the device's planned exams are currently at full clinical fidelity in the prototype — meaning the scoring, scales, interpretation logic, and reporting have been designed to match published clinical standards. The remaining tests in the catalog are visual placeholders only — they look correct and flow correctly, but their clinical layer has not yet been rebuilt. Treat any on-screen data in those placeholders as illustrative.
+Seven of the device's planned exams are currently at full clinical fidelity in the prototype — meaning the scoring, scales, interpretation logic, and reporting have been designed to match published clinical standards. The remaining tests in the catalog are visual placeholders only — they look correct and flow correctly, but their clinical layer has not yet been rebuilt. Treat any on-screen data in those placeholders as illustrative.
 
-The six clinically-faithful tests:
+The seven clinically-faithful tests:
 
 1. Visual Acuity
 2. Color Vision (Ishihara + D-15 Farnsworth)
@@ -22,8 +22,9 @@ The six clinically-faithful tests:
 4. Wavefront Aberrometry
 5. Extraocular Motility
 6. Pupillometry
+7. Wavefront Refraction
 
-This closes the originally-defined beta scope. The remaining 13 tests in the catalog await their own clinical rebuilds in subsequent releases.
+The remaining tests in the catalog await their own clinical rebuilds in subsequent releases. The entire UI/UX ships as one unified build — currently v0.2.6; a test reaching clinical fidelity in an earlier release is correct and unchanged since then, not running older software.
 
 ---
 
@@ -216,6 +217,40 @@ Real-time dark adaptation countdown (≥ 5 minutes for scotopic measurement vali
 
 ---
 
+## 7. Wavefront Refraction
+
+### Clinical purpose
+Produce a verified spectacle prescription by combining an objective starting measurement with subjective refinement — the digital replacement for the autorefractor-plus-phoropter workflow. The certified prescription is the output that releases the job to the downstream xoFit fitting/finishing workflow.
+
+### Reference standard
+- **Objective stage:** wavefront aberrometry used as an autorefractor — the Hartmann-Shack-derived lower-order sphere / cylinder / axis is the objective starting point.
+- **Subjective stage:** standard manifest-refraction methodology on a liquid-lens digital phoropter — Maximum Plus to Maximum Visual Acuity (MPMVA) sphere endpoint, Jackson Cross Cylinder (JCC) for cylinder axis then power, fogging to control accommodation, additive visual-acuity notation.
+
+> **This test deliberately makes no clinical claims.** Unlike the other clinically-faithful tests, the report carries no Patient Classification banner and no interpretive language. A refraction is a measurement-and-verification workflow, not a screening — interpretive output is stripped by clinical direction. The Clinical Summary states data only.
+
+### What the UI does
+- Two-stage flow: entry (full refraction or subjective-only) → objective (monocular wavefront capture, OD then OS) → subjective (per eye: sphere/MPMVA → JCC axis → JCC power → optional second MPMVA → add) → report
+- Objective capture uses the live eye-scan presentation (dark viewer, breathing pupil, sweep line, centering ring, and a red alignment dot that turns the backdrop green on lock), documenting a scan count (1–3) per eye to communicate measurement reliability
+- **Axis before power (JCC):** enforced by step order — cylinder-power refinement is unreachable until the cylinder axis is confirmed
+- **Fogging:** a +0.75 D fog prompt after objective capture (relaxes accommodation, prevents over-minusing); skippable
+- **Sphere compensation note** during cylinder power: for each −0.50 D CYL added, add +0.25 D SPH to maintain the circle of least confusion
+- **Rx discipline:** SPH/CYL signed + 2 dp; AXIS integer + °; ADD signed with D or "—". Monocular throughout — no OU averaging
+- **Optotype selector** (Letters / Tumbling E / Tumbling C) drawn as geometric SVG optotypes, shared with Visual Acuity, for pediatric / non-literate / non-Latin-script patients; additive VA notation (e.g. 20/25 +4) surfaced as best VA so far
+- **Report:** Final Prescription hero (signed Rx + ADD + BCVA per eye); Objective Results and Subjective Correction two-box; wavefront analysis with 3 mm / 5 mm ring overlay toggle, zoom-scope, and color-scale legend; data-only Clinical Summary; Doctor sign-off above Certify & close
+- **Certify & close is a system event** — it releases the verified Rx to the downstream xoFit job object (not a UI-only action)
+
+### What we'd like the panel to evaluate
+- Does the two-stage flow (objective wavefront → subjective JCC/MPMVA refinement) match how you'd run a refraction on a digital phoropter?
+- Is the +0.75 D fogging prompt and the axis-before-power JCC ordering correct and complete?
+- Is the "no clinical claims / measurement-and-verification only" stance for the report the right call, versus the interpretive banners the other tests carry?
+- What is the right pass/fail acuity threshold for the subjective endpoint? (Currently "more than half correct," flagged for validation.)
+- Does anything about the certified-Rx-as-release-gate model raise a clinical or workflow concern?
+
+### What's coming (not yet in the UI)
+A patient-facing headset view for an objective self-administered mode (this component is the tablet / technician-doctor view only), and the engineering wiring that turns Certify & close into the downstream Rx-release event. Both depend on scoping with engineering.
+
+---
+
 ## Cross-cutting conventions
 
 These apply consistently across every clinically-faithful test:
@@ -271,4 +306,4 @@ Please return your observations through the standard project channels. The devel
 
 ---
 
-*Method Marketing Agency · xoExam UI/UX Clinical Evaluation Brief · May 22, 2026*
+*Method Marketing Agency · xoExam UI/UX Clinical Evaluation Brief · v0.2.6 · June 2, 2026*

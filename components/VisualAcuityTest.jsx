@@ -134,6 +134,39 @@ const Icon = {
   arrow:     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>,
 };
 
+// ── Optotype renderer ──
+// Proper geometric optotypes for the non-letter chart types, so the patient
+// identifies an ORIENTATION rather than naming a glyph (used for children,
+// non-literate, and non-Latin-script patients):
+//   kind 'E' — Snellen "tumbling E": one symbol (3 bars + spine on a 5×5 grid),
+//              rotated to 0/90/180/270. It is always the same letter E — never
+//              a mix of glyphs (the prior build rotated a font glyph, which read
+//              as a generic chart; this draws the true optotype).
+//   kind 'C' — Landolt C: a ring with a 1-unit gap; the patient reports which
+//              way the gap points. Standard acuity optotype alongside the E.
+// Rotation 0 = E legs / C gap point to the right; +90 increments rotate clockwise.
+function VA_Optotype({ kind, size, rotation = 0, color }) {
+  const rot = { transform: `rotate(${rotation}deg)`, display: 'block' };
+  if (kind === 'C') {
+    const cx = 2.5, cy = 2.5, R = 2.1, r = 1.15, gap = 42;
+    const a0 = (gap / 2) * Math.PI / 180, a1 = (360 - gap / 2) * Math.PI / 180;
+    const pt = (a, rad) => `${(cx + rad * Math.cos(a)).toFixed(3)} ${(cy + rad * Math.sin(a)).toFixed(3)}`;
+    const d = `M ${pt(a0, R)} A ${R} ${R} 0 1 1 ${pt(a1, R)} L ${pt(a1, r)} A ${r} ${r} 0 1 0 ${pt(a0, r)} Z`;
+    return <svg width={size} height={size} viewBox="0 0 5 5" style={rot}><path d={d} fill={color}/></svg>;
+  }
+  // Snellen E (default)
+  return (
+    <svg width={size} height={size} viewBox="0 0 5 5" style={rot}>
+      <g fill={color}>
+        <rect x="0" y="0" width="1" height="5"/>
+        <rect x="0" y="0" width="5" height="1"/>
+        <rect x="0" y="2" width="5" height="1"/>
+        <rect x="0" y="4" width="5" height="1"/>
+      </g>
+    </svg>
+  );
+}
+
 function VisualAcuityTest({ onBack, tweaks }) {
   const accent = tweaks?.accentColor || '#1f8eff';
 
@@ -143,7 +176,7 @@ function VisualAcuityTest({ onBack, tweaks }) {
   const [viewMode, setViewMode] = React.useState('individual');
 
   // ── Ready phase setup state ──
-  const [chartType, setChartType] = React.useState('snellen'); // 'snellen' | 'numbers' | 'tumblingE'
+  const [chartType, setChartType] = React.useState('snellen'); // 'snellen' | 'numbers' | 'tumblingE' | 'tumblingC'
   const [startLine, setStartLine] = React.useState(5);
 
   // Tumbling E rotations, keyed by `${lineN}_${idx}`
@@ -334,7 +367,7 @@ function VisualAcuityTest({ onBack, tweaks }) {
 
   const SnellenPreview = () => {
     const previewLines = VA_LINES.slice(0, 8);
-    const labelMap = { snellen: 'Snellen reference', numbers: 'Numbers reference', tumblingE: 'Tumbling E reference' };
+    const labelMap = { snellen: 'Snellen reference', numbers: 'Numbers reference', tumblingE: 'Tumbling E reference', tumblingC: 'Tumbling C reference' };
     // Deterministic preview content per chart type
     const previewContent = (line) => {
       if (chartType === 'numbers') {
@@ -354,10 +387,13 @@ function VisualAcuityTest({ onBack, tweaks }) {
                 <span style={{ fontSize: 9, fontWeight: 700, color: '#cbd5e1', minWidth: 40, textAlign: 'right', letterSpacing: '0.05em' }}>{line.va}</span>
                 <div style={{ display: 'flex', gap: Math.max(20 - line.letters.length * 1.5, 8), alignItems: 'flex-end' }}>
                   {content.map((l, i) => {
-                    const rot = chartType === 'tumblingE' ? VA_E_ROTATIONS[(line.n * 7 + i * 3) % 4] : 0;
-                    const ch = chartType === 'tumblingE' ? 'E' : l;
-                    return (
-                      <span key={i} style={{ fontSize: Math.min(line.fs * 0.55, 92), fontFamily: FONT, fontWeight: 700, color: '#cbd5e1', lineHeight: 1, display: 'inline-block', transform: rot ? `rotate(${rot}deg)` : 'none' }}>{ch}</span>
+                    const isOpto = chartType === 'tumblingE' || chartType === 'tumblingC';
+                    const optoKind = chartType === 'tumblingC' ? 'C' : 'E';
+                    const rot = isOpto ? VA_E_ROTATIONS[(line.n * 7 + i * 3) % 4] : 0;
+                    return isOpto ? (
+                      <VA_Optotype key={i} kind={optoKind} size={Math.min(line.fs * 0.55, 92)} rotation={rot} color="#cbd5e1"/>
+                    ) : (
+                      <span key={i} style={{ fontSize: Math.min(line.fs * 0.55, 92), fontFamily: FONT, fontWeight: 700, color: '#cbd5e1', lineHeight: 1, display: 'inline-block' }}>{l}</span>
                     );
                   })}
                 </div>
@@ -474,11 +510,12 @@ function VisualAcuityTest({ onBack, tweaks }) {
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Chart type</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
             {[
               { v: 'snellen',   label: 'Snellen letters', sub: 'Standard A–Z' },
               { v: 'numbers',   label: 'Numbers',         sub: '1–9' },
-              { v: 'tumblingE', label: 'Tumbling E',      sub: 'Rotated E · 4 orientations' },
+              { v: 'tumblingE', label: 'Tumbling E',      sub: 'Orientation · 4-way' },
+              { v: 'tumblingC', label: 'Tumbling C',      sub: 'Landolt gap · 4-way' },
             ].map(opt => {
               const active = chartType === opt.v;
               return (
@@ -590,9 +627,9 @@ function VisualAcuityTest({ onBack, tweaks }) {
                 const res = lineRes[idx];
                 const bg = res === 'correct' ? C.success : res === 'incorrect' ? C.error : '#fff';
                 const fg = res === null ? C.navy : '#fff';
-                const isE = chartType === 'tumblingE';
-                const displayChar = isE ? 'E' : letter;
-                const rotation = isE ? (eRotations[`${line.n}_${idx}`] || 0) : 0;
+                const isOpto = chartType === 'tumblingE' || chartType === 'tumblingC';
+                const optoKind = chartType === 'tumblingC' ? 'C' : 'E';
+                const rotation = isOpto ? (eRotations[`${line.n}_${idx}`] || 0) : 0;
                 return (
                   <button key={idx} onClick={() => toggleLetter(line.n, idx)} style={{
                     minWidth: 64, minHeight: 64, padding: '10px 14px',
@@ -601,15 +638,17 @@ function VisualAcuityTest({ onBack, tweaks }) {
                     background: bg, transition: 'all 0.15s', fontFamily: FONT,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <span style={{
-                      fontSize: Math.min(line.fs, 84), fontWeight: 700, color: fg,
-                      lineHeight: 1, userSelect: 'none',
-                      textDecoration: res === 'incorrect' ? 'line-through' : 'none',
-                      textDecorationThickness: 3,
-                      display: 'inline-block',
-                      transform: isE ? `rotate(${rotation}deg)` : 'none',
-                      transition: 'transform 0.15s',
-                    }}>{displayChar}</span>
+                    {isOpto ? (
+                      <VA_Optotype kind={optoKind} size={Math.min(line.fs, 84)} rotation={rotation} color={fg}/>
+                    ) : (
+                      <span style={{
+                        fontSize: Math.min(line.fs, 84), fontWeight: 700, color: fg,
+                        lineHeight: 1, userSelect: 'none',
+                        textDecoration: res === 'incorrect' ? 'line-through' : 'none',
+                        textDecorationThickness: 3,
+                        display: 'inline-block',
+                      }}>{letter}</span>
+                    )}
                   </button>
                 );
               })}
@@ -675,8 +714,8 @@ function VisualAcuityTest({ onBack, tweaks }) {
     <div style={{ background: C.card, borderRadius: 14, border: `1.5px solid ${C.border}`, padding: '28px 32px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 14, borderBottom: `1px solid ${C.border}` }}>
         <div>
-          <div style={violator}>Full Snellen chart</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginTop: 4 }}>Tap any letter to mark</div>
+          <div style={violator}>{chartType === 'tumblingE' ? 'Full tumbling E chart' : chartType === 'tumblingC' ? 'Full tumbling C chart' : chartType === 'numbers' ? 'Full numbers chart' : 'Full Snellen chart'}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginTop: 4 }}>{chartType === 'tumblingE' || chartType === 'tumblingC' ? 'Tap any symbol to mark' : 'Tap any letter to mark'}</div>
         </div>
         <div style={{ fontSize: 11, fontWeight: 400, color: C.muted }}>10 lines · {eyeFull[eyeMode]}</div>
       </div>
@@ -691,9 +730,10 @@ function VisualAcuityTest({ onBack, tweaks }) {
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: Math.max(28 - line.letters.length * 1.5, 10) }}>
                 {line.letters.map((letter, idx) => {
                   const res = lineRes[idx];
-                  const isE = chartType === 'tumblingE';
-                  const displayChar = isE ? 'E' : letter;
-                  const rotation = isE ? (eRotations[`${line.n}_${idx}`] || 0) : 0;
+                  const isOpto = chartType === 'tumblingE' || chartType === 'tumblingC';
+                  const optoKind = chartType === 'tumblingC' ? 'C' : 'E';
+                  const rotation = isOpto ? (eRotations[`${line.n}_${idx}`] || 0) : 0;
+                  const optoColor = res === 'correct' ? C.success : res === 'incorrect' ? C.error : C.text;
                   return (
                     <button key={idx} onClick={() => toggleLetter(line.n, idx)} style={{
                       fontSize: Math.min(line.fs, 70),
@@ -703,9 +743,12 @@ function VisualAcuityTest({ onBack, tweaks }) {
                       textDecoration: res === 'incorrect' ? 'line-through' : 'none',
                       textDecorationThickness: 3,
                       padding: '4px 8px', minWidth: 44, minHeight: 44,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       transition: 'all 0.15s',
                     }}>
-                      <span style={{ display: 'inline-block', transform: isE ? `rotate(${rotation}deg)` : 'none' }}>{displayChar}</span>
+                      {isOpto
+                        ? <VA_Optotype kind={optoKind} size={Math.min(line.fs, 70)} rotation={rotation} color={optoColor}/>
+                        : <span style={{ display: 'inline-block' }}>{letter}</span>}
                     </button>
                   );
                 })}

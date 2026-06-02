@@ -5,6 +5,7 @@ const EXAM_TYPES = [
   // Refraction
   { id:'refraction',               name:'Refraction',                   category:'Refraction',      color:'#1f8eff', iconPath:'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z' },
   { id:'aberrometer',              name:'Wavefront Aberrometry',        category:'Refraction',      color:'#ec4899', iconPath:'M13 10V3L4 14h7v7l9-11h-7z' },
+  { id:'wavefront-refraction',     name:'Wavefront Refraction',         category:'Refraction',      color:'#1f8eff', iconPath:'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z' },
   { id:'accommodation',            name:'Accommodation',                category:'Refraction',      color:'#06b6d4', iconPath:'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z' },
   { id:'keratometry',              name:'Keratometry',                  category:'Refraction',      color:'#f97316', iconPath:'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7' },
   // Visual Field

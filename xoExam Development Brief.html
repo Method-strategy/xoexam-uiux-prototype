@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>xoExam™ — Development Brief · v0.1.0 → v0.2.6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --navy: #0e2f5e;
+    --accent: #1f8eff;
+    --royal: #155bcc;
+    --teal: #05c1bc;
+    --green: #75d647;
+    --light: #f9fafb;
+    --card: #ffffff;
+    --border: #e5e7eb;
+    --text: #111827;
+    --text2: #374151;
+    --muted: #9ca3af;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--light); color: var(--text); font-family: 'Nunito Sans', -apple-system, sans-serif; font-weight: 400; line-height: 1.55; }
+  .page { max-width: 920px; margin: 0 auto; padding: 48px 40px 80px; }
+
+  /* Header */
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 28px; border-bottom: 2px solid var(--navy); margin-bottom: 36px; }
+  .h-left .kicker { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
+  .h-left h1 { font-size: 32px; font-weight: 700; color: var(--navy); margin: 0 0 6px; line-height: 1.15; letter-spacing: -0.01em; }
+  .h-left .sub { font-size: 14px; color: var(--text2); }
+  .h-right { text-align: right; font-size: 11px; color: var(--muted); }
+  .h-right .v { font-size: 22px; font-weight: 700; color: var(--accent); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+
+  /* Executive summary */
+  .exec { background: var(--card); border: 1.5px solid var(--border); border-radius: 14px; padding: 24px 28px; margin-bottom: 32px; }
+  .exec .label { font-size: 11px; font-weight: 700; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+  .exec p { font-size: 15px; color: var(--text); line-height: 1.65; margin: 0 0 12px; }
+  .exec p:last-child { margin-bottom: 0; }
+
+  /* Stats strip */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 36px; }
+  .stat { background: var(--card); border: 1.5px solid var(--border); border-radius: 12px; padding: 18px 18px 16px; }
+  .stat .num { font-size: 28px; font-weight: 700; color: var(--navy); line-height: 1; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+  .stat .lbl { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .stat .ctx { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+  /* Section */
+  section { margin-bottom: 38px; }
+  section > h2 { font-size: 18px; font-weight: 700; color: var(--navy); margin: 0 0 16px; letter-spacing: -0.01em; }
+
+  /* Version timeline */
+  .timeline { position: relative; }
+  .v-entry { background: var(--card); border: 1.5px solid var(--border); border-radius: 14px; padding: 22px 26px; margin-bottom: 14px; position: relative; }
+  .v-entry .v-head { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; flex-wrap: wrap; }
+  .v-tag { display: inline-flex; align-items: center; padding: 5px 12px; border-radius: 14px; background: rgba(31,142,255,0.10); color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+  .v-date { font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: 0.04em; }
+  .v-theme { font-size: 11px; color: var(--text2); padding: 3px 10px; border-radius: 10px; background: var(--light); border: 1px solid var(--border); font-weight: 700; letter-spacing: 0.04em; }
+  .v-entry h3 { font-size: 17px; font-weight: 700; color: var(--text); margin: 0 0 10px; line-height: 1.3; }
+  .v-entry p.lead { font-size: 14px; color: var(--text2); margin: 0 0 12px; line-height: 1.6; }
+  .v-entry ul { margin: 0; padding-left: 18px; }
+  .v-entry li { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 5px; }
+  .v-entry li strong { color: var(--text); font-weight: 700; }
+
+  /* Current state callout */
+  .current { background: linear-gradient(135deg, var(--navy) 0%, #1a4280 100%); color: white; border-radius: 14px; padding: 28px 32px; margin-bottom: 36px; }
+  .current .label { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+  .current h2 { font-size: 22px; font-weight: 700; margin: 0 0 6px; color: white; }
+  .current .url { font-size: 13px; color: rgba(255,255,255,0.85); margin-bottom: 16px; font-family: ui-monospace, Menlo, monospace; }
+  .current .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.18); }
+  .current .grid > div .sub-l { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.6); margin-bottom: 6px; }
+  .current .grid > div .sub-v { font-size: 14px; font-weight: 700; color: white; line-height: 1.4; }
+
+  /* What's next */
+  .next-card { background: var(--card); border: 1.5px solid var(--border); border-radius: 14px; padding: 22px 26px; }
+  .next-card h3 { font-size: 15px; font-weight: 700; color: var(--navy); margin: 0 0 12px; }
+  .next-card ol { margin: 0; padding-left: 20px; }
+  .next-card li { font-size: 13px; color: var(--text2); line-height: 1.65; margin-bottom: 6px; }
+  .next-card li strong { color: var(--text); font-weight: 700; }
+
+  /* Footer */
+  footer { display: flex; align-items: center; justify-content: space-between; margin-top: 50px; padding-top: 22px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+  footer .right { text-align: right; }
+
+  /* Print */
+  @media print {
+    body { background: white; }
+    .page { padding: 24px; max-width: none; }
+    .v-entry, .stat, .exec, .next-card { break-inside: avoid; box-shadow: none; }
+    .current { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page" data-screen-label="01 Brief">
+
+<header>
+  <div class="h-left">
+    <div class="kicker">Development progress brief</div>
+    <h1>xoExam™ UI/UX Prototype</h1>
+    <div class="sub">Tablet controller for the Xenon Ophthalmics™ eye exam system</div>
+  </div>
+  <div class="h-right">
+    <div class="v">v0.2.6</div>
+    <div>Currently deployed</div>
+    <div style="margin-top:6px;">June 2, 2026</div>
+  </div>
+</header>
+
+<div class="exec">
+  <div class="label">Executive summary</div>
+  <p>Between April 27 and June 2, 2026, the xoExam™ UI/UX prototype progressed through fourteen versioned releases (v0.1.0 through v0.2.6). The work covered three connected efforts: <strong>(1)</strong> establishing the application shell — login, welcome, dashboard, navigation, supporting admin pages; <strong>(2)</strong> rebuilding the doctor and module ecosystem as the unified hub for xoExam™, xoIris™, xoFit™ and xoLab™; <strong>(3)</strong> bringing the 19 ophthalmic tests onto a single shared test framework with clinically accurate scoring, one or more tests per release.</p>
+  <p>The reusable patterns established across the rollout — the OD/OS/OU eye sequence, in-test eye picker, three-phase shared test framework, canonical cancel experience, and Doctor sign-off — generalize to every remaining test in the suite, which is why each new test reaches clinical fidelity faster than the last.</p>
+</div>
+
+<div class="stats">
+  <div class="stat">
+    <div class="num">8</div>
+    <div class="lbl">Versions shipped</div>
+    <div class="ctx">v0.1.0 → v0.1.7</div>
+  </div>
+  <div class="stat">
+    <div class="num">2</div>
+    <div class="lbl">Tests at full clinical fidelity</div>
+    <div class="ctx">Visual Acuity · Color Vision</div>
+  </div>
+  <div class="stat">
+    <div class="num">17</div>
+    <div class="lbl">Application screens</div>
+    <div class="ctx">login, dashboard, exam flows</div>
+  </div>
+  <div class="stat">
+    <div class="num">3</div>
+    <div class="lbl">Weeks elapsed</div>
+    <div class="ctx">design + build + iterate</div>
+  </div>
+</div>
+
+<section>
+  <h2>Version timeline</h2>
+  <div class="timeline">
+
+    <!-- v0.1.0 -->
+    <div class="v-entry">
+      <div class="v-head">
+        <span class="v-tag">v0.1.0</span>
+        <span class="v-date">April 27, 2026</span>
+        <span class="v-theme">Foundation deploy</span>
+      </div>
+      <h3>Initial deploy — 20 tests catalogued, brand correction sweep</h3>
+      <p class="lead">First production-target deploy of the xoExam™ prototype. The full set of 20 ophthalmic tests was catalogued and organised into clinical categories. All branding aligned to Xenon Ophthalmics Inc. nomenclature.</p>
+      <ul>
+        <li>Test selection grid with category filters: <strong>Refraction · Visual Field · Binocular · Sensory · Neuro · Ocular Surface · AI</strong></li>
+        <li>Ishihara plates 1–4 integrated with real licensed plate images and correct answer keys</li>
+        <li>Esterman Binocular Functional Test added; Eyes Converging Exam added; duplicate Wavefront entry removed</li>
+        <li>D-15 Color Arrangement icon and entry point established</li>
+      </ul>
+    </div>
+
+    <!-- v0.1.1 -->
+    <div class="v-entry">
+      <div class="v-head">
+        <span class="v-tag">v0.1.1</span>
+        <span class="v-date">May 7, 2026</span>
+        <span class="v-theme">Interim release</span>
+      </div>
+      <h3>Stability and polish pass</h3>
+      <p class="lead">Interim deploy covering routine refinements, minor UI corrections, and stability improvements ahead of the larger structural work in v0.1.2.</p>
+    </div>
+
+    <!-- v0.1.2 -->
+    <div class="v-entry">
+      <div class="v-head">
+        <span class="v-tag">v0.1.2</span>
+        <span class="v-date">May 14, 2026</span>
+        <span class="v-theme">Doctor ecosystem</span>
+      </div>
+      <h3>Full Doctor section rebuild as the XO™ ecosystem hub</h3>
+      <p class="lead">In response to the client Figma audit, the previously brief doctor view was rebuilt into a full-page tabbed profile experience. Each doctor record is now the central hub linking out to the entire XO™ Vision Care System.</p>
+      <ul>
+        <li><strong>Six-tab DoctorProfile</strong>: Overview · Contact · Credentials · Schedule · Connected Modules · Reviews</li>
+        <li><strong>Connected Modules</strong> tab makes the doctor record the link point for xoExam™, xoIris™ (cloud-linked), xoFit™ (locked, sales-contact), xoLab™ (locked, sales-contact)</li>
+        <li>Doctor roster expanded from 5 to 8 entries with full clinical data: DOB, address, education, fellowships, certifications, languages, publications, success rates, patient ratings</li>
+        <li>Stats bar, sort menu, per-doctor action menu added; doctor and messaging pages split into separate sections</li>
+        <li>Nomenclature swept across the application: xoExam™ / xoIris™ / xoFit™ / xoLab™ standardised everywhere</li>
+      </ul>
+    </div>
+
+    <!-- v0.1.3 -->
+    <div class="v-entry">
+      <div class="v-head">
+        <span class="v-tag">v0.1.3</span>
+        <span class="v-date">May 14, 2026</span>
+        <span class="v-theme">Module ecosystem</span>
+      </div>
+      <h3>Per-product module tabs and marketing surfaces</h3>
+      <p class="lead">The single Connected Modules tab was split into one tab per product so each XO™ product has dedicated real estate. Cloud-connected modules show live data; future modules become marketing surfaces.</p>
+      <ul>
+        <li><strong>xoIris™ tab</strong> (connected): Connected status pill, last-sync timestamp, "Open xoIris" deep link, 4-up data stats grid (synced appointments, today's schedule, no-show flags, pending confirms)</li>
+        <li><strong>xoFit™ and xoLab™ tabs</strong> (future products): full marketing layout — product-color headline, supporting copy, real product imagery, "Contact XO Sales" and "Learn More" CTAs</li>
+        <li>Product imagery optimised for tablet bandwidth (1MB → 60KB per image)</li>
+        <li>Self-service photo upload affordance added for the logged-in doctor</li>
+      </ul>
+    </div>
+
+    <!-- v0.1.4 -->
+    <div class="v-entry">
+      <div class="v-head">
+        <span class="v-tag">v0.1.4</span>
+        <span class="v-date">May 15, 2026</span>
+        <span class="v-theme">Architecture standardisation</span>
+      </div>
+      <h3>Shared test framework + canonical cancel experience + Visual Acuity to full clinical fidelity</h3>
+      <p class="lead">First delivery under the test-stream architecture: <strong>Visual Acuity was completed to full clinical fidelity in a dedicated stream</strong> and integrated into the main prototype via the new shared test harness. Every subsequent test mounts into the same shell, which owns the timer, exam header, patient info, and the safety-critical cancel-test confirmation.</p>
+      <ul>
+        <li><strong>Visual Acuity test</strong>: complete clinical readout — individual line and full chart views, per-eye OD/OS/OU results, three-state letter responses, mark-all-correct/incorrect, regenerate letters, auto-progression at ≥65%, prescription adjustment panel (SPH/CYL/AXIS for OD and OS), detailed report with VA table, prescription summary, Export and Compare actions</li>
+        <li><strong>Canonical cancel experience</strong> across all 19 tests: back arrow hidden during testing (no accidental data loss); a labelled red "Cancel test" button replaces it; clicking opens a confirm modal with a destructive "Cancel test" option and a default "Continue test"</li>
+        <li>Test-stream pattern documented as the contract for all future test integrations — each test ships an approval-ready demo plus a shell-ready component, byte-identical between the two</li>
+      </ul>
+    </div>
+
+    <!-- v0.1.5 -->
+    <div class="v-entry">
+      <div class="v-head">
+        <span class="v-tag">v0.1.5</span>
+        <span class="v-date">May 15, 2026</span>
+        <span class="v-theme">Color Vision rebuild</span>
+      </div>
+      <h3>Color Vision rebuilt: Ishihara + D-15 unified onto the shared framework</h3>
+      <p class="lead">The Color Vision test was rebuilt in three atomic batches — structural cleanup, integration onto the shared framework, then user-experience polish. The result: a single Color Vision test that runs both Ishihara screening and D-15 Farnsworth from a unified entry point.</p>
+      <ul>
+        <li>Ishihara text-input replaced with a touch-friendly <strong>3×4 number pad</strong> (1–9, backspace, 0, submit) plus a "No response" button</li>
+        <li><strong>Session notes</strong> textarea added to both Ishihara and D-15 right sidebars</li>
+        <li>Defect bands aligned to <strong>American Academy of Ophthalmology</strong> three-band convention: Normal color vision · Borderline · Deficiency detected</li>
+        <li>Visual Acuity-style report structure: header card, score hero, clinical interpretation, patient information, plate-by-plate results, D-15 results</li>
+      </ul>
+    </div>
+
+    <!-- v0.1.6 -->
+    <div class="v-entry">
+      <div class="v-head">
+        <span class="v-tag">v0.1.6</span>
+        <span class="v-date">May 15, 2026</span>
+        <span class="v-theme">Color Vision polish</span>
+      </div>
+      <h3>D-15 cap UI polish — anti-cheat correction and homogenised workflow</h3>
+      <p class="lead">Two client-flagged corrections to the D-15 test. The Finish &amp; Report flow was unified between the two protocols, and a workflow defect that let patients "cheat" the cap arrangement by sorting numbers was closed.</p>
+      <ul>
+        <li><strong>Finish &amp; Report</strong> button wired in the shared header during D-15 — replaces the previously redundant inline "Complete Test" button</li>
+        <li><strong>Cap numbers removed</strong> from the patient-facing arrangement UI (caps were trivially solvable by sorting numeric labels instead of matching colors); cap identifiers remain available internally for scoring and the post-analysis sequence display</li>
+        <li>Reference cap copy clarified for clinical accuracy; cap visual size increased for touch targets</li>
+      </ul>
+    </div>
+
+    <!-- v0.1.7 -->
+    <div class="v-entry">
+      <div class="v-head">
+        <span class="v-tag">v0.1.7</span>
+        <span class="v-date">May 15, 2026</span>
+        <span class="v-theme">Clinical accuracy</span>
+      </div>
+      <h3>Color Vision clinical accuracy overhaul — second test to full clinical fidelity</h3>
+      <p class="lead">Color Vision became the second test in the system to reach full clinical fidelity (after Visual Acuity in v0.1.4): the standard mono-mono-binocular eye sequence, industry-standard scoring methodology, and clinically realistic stimulus presentation. The eye-sequence pattern established here generalises to every remaining mono-mono-binocular test in the suite.</p>
+      <ul>
+        <li><strong>OD → OS → OU clinical sequence</strong>: each Color Vision protocol now runs as three discrete tests — right eye monocular, left eye monocular, both eyes binocular — with patient-positioning prompts between phases. Doctor can choose any start eye; default is OD.</li>
+        <li><strong>In-test eye picker</strong> with a 3-pill OD/OS/OU selector at the top of each test, locking once the patient begins to prevent accidental data loss</li>
+        <li><strong>Vingrys &amp; King-Smith (1988) scoring</strong> implemented — the same moment-of-inertia method used by every commercial D-15 software since publication. Generates the six clinical indices: Confusion Angle, Major Radius, Minor Radius, Total Error Score, S-index, C-index</li>
+        <li><strong>Cap palette upgraded</strong> from the previous vivid rainbow to clinically realistic Munsell-derived hues at near-constant luminance — sorting now requires genuine hue discrimination as it does on the physical D-15 plates</li>
+        <li><strong>Cumulative report</strong> shows up to three eyes per protocol with patient classification (worst-monocular-eye, clinical bottom line), binocular function note, full V-K-S indices table, Vingrys &amp; King-Smith reference population values, three-zone severity strip, and a clinical polar diagnostic plot with confusion-line overlays for at-a-glance defect-type reading</li>
+        <li>Ishihara plates 5–24 (no licensed image yet) now display session-stable simulated numbers blended into the dot field so the design-testing flow can score correctly; small "simulated" tag marks them as non-clinical</li>
+        <li>D-15 launch icon cropped to just the colorful circular logo</li>
+      </ul>
+    </div>
+
+    <!-- v0.1.8 -->
+    <div class="v-entry">
+      <div class="v-head">
+        <span class="v-tag">v0.1.8</span>
+        <span class="v-date">May 18, 2026</span>
+        <span class="v-theme">Visual Fields</span>
+      </div>
+      <h3>Visual Fields to clinical fidelity + first formal engineering handoff</h3>
+      <p class="lead">The Visual Fields perimetry test was rebuilt to clinical fidelity, and the first formal Engineering Handoff Specification was issued to document the integration contract for the development team.</p>
+      <ul>
+        <li><strong>Clinical perimetry readout</strong>: Glaucoma Hemifield Test category, Total Deviation and Pattern Deviation probability plots, age-banded reference values, reliability indices (fixation losses, false positives, false negatives)</li>
+        <li><strong>OD → OS bilateral sequence</strong> for monocular patterns; single binocular run for by-design binocular protocols (Esterman and equivalents)</li>
+        <li>Multi-phase pre-test flow (eye selection, configuration, pattern, foveal calibration) collapsed cleanly under the shared three-phase framework</li>
+        <li><strong>Engineering Handoff Specification v0.1.8</strong> issued — quick start, component contract, integration touchpoints, open-decisions agenda, regulatory acknowledgment</li>
+      </ul>
+    </div>
+
+    <!-- v0.1.9 -->
+    <div class="v-entry">
+      <div class="v-head">
+        <span class="v-tag">v0.1.9</span>
+        <span class="v-date">May 21, 2026</span>
+        <span class="v-theme">Wavefront Aberrometry</span>
+      </div>
+      <h3>Wavefront Aberrometry to clinical fidelity + Doctor sign-off pattern</h3>
+      <p class="lead">Wavefront Aberrometry was extracted to its own component and rebuilt to clinical fidelity at a corrected 6.0 mm analysis diameter so its higher-order-aberration values match published norms. This release introduced the Doctor sign-off pattern now used across all clinical-fidelity tests.</p>
+      <ul>
+        <li><strong>Clinical interpretation</strong> driven by higher-order RMS thresholds; Total HOA and Coma RMS surfaced as primary metrics; per-eye patient classification banner</li>
+        <li><strong>Wavefront map</strong> with view-type selector, color-scale legend, and proper Zernike notation; axis corrected to unsigned 0–180°</li>
+        <li><strong>"Doctor sign-off"</strong> label introduced above Certify &amp; close — groundwork for the eventual roles &amp; remote-operation model</li>
+      </ul>
+    </div>
+
+    <!-- v0.2.0 -->
+    <div class="v-entry">
+      <div class="v-head">
+        <span class="v-tag">v0.2.0</span>
+        <span class="v-date">May 21, 2026</span>
+        <span class="v-theme">Naming &amp; housekeeping</span>
+      </div>
+      <h3>Naming convention sweep + catalog cleanup</h3>
+      <p class="lead">A repository-wide housekeeping release with no new clinical content. The client-approved test-naming convention was applied throughout: UI labels use bare nouns (no redundant "Test"/"Exam" suffix), while formal reports keep their full clinical phrasing.</p>
+      <ul>
+        <li>Catalog, launchers, and exam-header titles swept to the bare-noun convention</li>
+        <li>Dead and duplicate catalog entries removed; routing fallbacks audited so no unknown route can blank the screen</li>
+      </ul>
+    </div>
+
+    <!-- v0.2.1 -->
+    <div class="v-entry">
+      <div class="v-head">
+        <span class="v-tag">v0.2.1</span>
+        <span class="v-date">May 22, 2026</span>
+        <span class="v-theme">Extraocular Motility</span>
+      </div>
+      <h3>Extraocular Motility to clinical fidelity</h3>
+      <p class="lead">Extraocular Motility was extracted to its own component and rebuilt to clinical fidelity, with the grading scale corrected to the international standard and the position set completed to nine cardinal positions.</p>
+      <ul>
+        <li><strong>Grading scale corrected</strong> from an arbitrary 1–5 to the international standard 0 to ±4 (0 = normal, underaction negative, overaction positive)</li>
+        <li><strong>Nine cardinal positions</strong> including primary gaze; each position carries primary and secondary muscle / cranial-nerve mapping so a CN IV palsy is read correctly</li>
+        <li>H-pattern motility diagram (clinical standard); cranial-nerve palsy flag surfaced prominently; sub-test state machine (versions → pursuit → saccades → ductions)</li>
+      </ul>
+    </div>
+
+    <!-- v0.2.5 -->
+    <div class="v-entry">
+      <div class="v-head">
+        <span class="v-tag">v0.2.5</span>
+        <span class="v-date">May 22, 2026</span>
+        <span class="v-theme">Pupillometry</span>
+      </div>
+      <h3>Pupillometry to clinical fidelity</h3>
+      <p class="lead">Pupillometry was rebuilt from a static-only sketch into a full clinical-fidelity component with three sub-tests, age-banded reference ranges, and a four-pattern clinical flag system.</p>
+      <ul>
+        <li><strong>Three sub-tests</strong>: static pupil sizing (three light conditions), dynamic pupillary light reflex (live curve + six metrics + NPi composite), swinging flashlight with per-eye RAPD grading</li>
+        <li><strong>Age-banded reference range</strong> (Winn 1994) driven by patient age; light-vs-dark anisocoria differential rule</li>
+        <li><strong>Four-pattern clinical flags</strong>: sympathetic (Horner's), parasympathetic (CN III), optic-nerve RAPD, neurological NPi</li>
+      </ul>
+    </div>
+
+    <!-- v0.2.6 -->
+    <div class="v-entry" style="border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset;">
+      <div class="v-head">
+        <span class="v-tag" style="background: var(--accent); color: white;">v0.2.6 · Current</span>
+        <span class="v-date">June 2, 2026</span>
+        <span class="v-theme">Wavefront Refraction</span>
+      </div>
+      <h3>Wavefront Refraction — the combined autorefractor + phoropter replacement</h3>
+      <p class="lead">v0.2.6 adds Wavefront Refraction, the most clinically consequential test in the suite. It is the combined digital replacement for the traditional two-instrument refraction workflow, and its verified prescription is the gate that releases the job to the downstream xoFit fitting workflow. It is added as a new, parallel test that supersedes — but does not remove — Wavefront Aberrometry; both stay in the catalog.</p>
+      <ul>
+        <li><strong>Stage 1 — Objective:</strong> monocular wavefront capture (OD → OS) using the live eye-scan presentation — dark viewer, breathing pupil, sweep line, and a red alignment dot that turns the backdrop green on lock — with a documented scan count (1–3) per eye</li>
+        <li><strong>Stage 2 — Subjective:</strong> liquid-lens digital phoropter refinement, step sequence sphere (MPMVA) → JCC axis → JCC power → add, per eye</li>
+        <li><strong>Clinical non-negotiables baked in:</strong> axis-before-power JCC ordering, +0.75 D fogging prompt, sphere-compensation note, signed two-decimal prescription discipline, monocular capture (no averaging across eyes)</li>
+        <li><strong>Certify &amp; close is a system event</strong> — it releases the verified prescription downstream; flagged to engineering as the integration trigger, not a UI-only action</li>
+        <li><strong>Deliberately no clinical claims</strong> in the report — a refraction is a measurement-and-verification workflow, not a screening, so no interpretive banner is shown</li>
+        <li>Standalone Visual Acuity gained geometric Tumbling E and Tumbling C optotypes, shared with the subjective phoropter stage</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<div class="current">
+  <div class="label">Currently deployed</div>
+  <h2>xoExam™ v0.2.6</h2>
+  <div class="url">https://xoexam-uiux.netlify.app</div>
+  <div class="grid">
+    <div>
+      <div class="sub-l">Target platform</div>
+      <div class="sub-v">Android tablet · 1280×800 base, responsive to 1920px</div>
+    </div>
+    <div>
+      <div class="sub-l">Tests at clinical fidelity</div>
+      <div class="sub-v">7 of 19 · Visual Acuity, Color Vision, Visual Fields, Wavefront Aberrometry, Extraocular Motility, Pupillometry, Wavefront Refraction</div>
+    </div>
+    <div>
+      <div class="sub-l">Application shell</div>
+      <div class="sub-v">Complete · login → welcome → dashboard → all sections</div>
+    </div>
+  </div>
+</div>
+
+<section>
+  <h2>What's next</h2>
+  <div class="next-card">
+    <h3>Active priorities</h3>
+    <ol>
+      <li><strong>Certify &amp; close as a system event</strong> — with engineering (MPR), wire Wavefront Refraction's Certify &amp; close to release the verified prescription to the downstream xoFit job object. This is the most consequential integration point in the suite.</li>
+      <li><strong>Remaining 12 tests to clinical fidelity</strong> — continue the rollout, applying the shared framework and per-test clinical specs. Prioritization of the next tests to be set with the clinical evaluation team.</li>
+      <li><strong>Subjective-stage pass/fail threshold</strong> — validate the acuity line pass/fail rule used in Wavefront Refraction against a published standard before lock (with Gary).</li>
+      <li><strong>Patient-facing headset view</strong> — scope the patient/clicker experience for objective self-administered modes with engineering; currently out of scope (tablet/technician view only).</li>
+      <li><strong>Licensed Ishihara plates 5–24</strong> — pending client-supplied licensed plate images for clinical launch (current simulated placeholders are clearly marked as non-clinical and are easy to swap).</li>
+    </ol>
+  </div>
+</section>
+
+<footer>
+  <div>
+    Method Marketing Agency · UI/UX design and prototype
+  </div>
+  <div class="right">
+    Brief generated June 2, 2026 · xoExam™ v0.2.6
+  </div>
+</footer>
+
+</div>
+</body>
+</html>
