@@ -1,6 +1,6 @@
 # xoExam™ UI/UX — Clinical Standards Reference
 ## A guide for the clinical team evaluating the prototype
-### Method Marketing Agency · June 2026 · Version 0.2.6
+### Method Marketing Agency · June 2026 · Version 0.2.7
 
 ---
 
@@ -22,7 +22,7 @@ Tests not listed in this guide are at **visual placeholder fidelity**: the UI lo
 
 ---
 
-## Scope of clinical fidelity in v0.2.6
+## Scope of clinical fidelity in v0.2.7
 
 > The xoExam UI/UX ships as one unified build. The right-hand column records *when each test last reached clinical fidelity*, not a separate version number per test.
 
@@ -34,7 +34,7 @@ Tests not listed in this guide are at **visual placeholder fidelity**: the UI lo
 | Wavefront Aberrometry | Hartmann-Shack sensor / Zernike polynomial output | v0.1.9 |
 | Extraocular Motility | International 0 to ±4 EOM grading | v0.2.1 |
 | Pupillometry | Winn 1994 age-banded norms · NeurOptics NPi-200 reference · RAPD grading | v0.2.5 |
-| Wavefront Refraction | Objective wavefront autorefraction + subjective JCC / MPMVA liquid-lens phoropter | v0.2.6 |
+| Wavefront Refraction | Objective wavefront autorefraction + subjective JCC / MPMVA liquid-lens phoropter (six competitive-parity enhancements added v0.2.7) | v0.2.6 |
 
 The remaining tests in the catalog are visual-fidelity placeholders awaiting their own clinical rebuilds in subsequent releases.
 
@@ -276,12 +276,23 @@ Four overlapping clinical references for pupillometry:
 
 ---
 
-## 7. Wavefront Refraction (v0.2.6)
+## 7. Wavefront Refraction (v0.2.6 · enhanced v0.2.7)
 
 ### Reference standard
 The combined digital replacement for the traditional two-instrument refraction workflow. **Objective stage:** wavefront aberrometry used as an autorefractor — the Hartmann-Shack-derived lower-order sphere / cylinder / axis is the objective starting point. **Subjective stage:** liquid-lens digital phoropter following standard manifest-refraction methodology — Maximum Plus to Maximum Visual Acuity (MPMVA) sphere endpoint, Jackson Cross Cylinder (JCC) for cylinder axis then power, fogging to control accommodation, and additive visual-acuity notation. The certified output is a verified spectacle prescription (Rx).
 
 > **This test deliberately makes no clinical claims.** Unlike the other clinically-faithful tests, the report carries **no Patient Classification banner and no interpretive language.** A refraction is a measurement-and-verification workflow, not a screening, so interpretive output is stripped by clinical direction. The Clinical Summary states data only (scans taken, completion, "Final Rx pending clinician certification").
+
+### New in v0.2.7 — six competitive-parity enhancements (all doctor-led-safe)
+Benchmarked against the Marco OPD-Scan III and Reichert Phoroptor VRx. Every addition is a **measurement or simulation, never a verdict** — the report still asserts no clinical claim.
+1. **PSF + simulated-VA before/after** — point-spread-function render and simulated acuity from the Zernike set, habitual Rx vs. new Rx.
+2. **Binocular balance** — added after both eyes via fogging / alternate occlusion (no prism hardware required).
+3. **Multi-source Rx comparison** — objective, subjective, habitual, and unaided side by side with spherical-equivalent deltas.
+4. **Photopic vs. mesopic (day & night) refraction** — 4 mm analysis (hardware-confirmed) plus a provisional 6 mm column and a night-shift Diff row.
+5. **Smart-Cylinder auto-bracketing** — the JCC step size auto-sizes to the cylinder magnitude and narrows after each reversal.
+6. **Refraction-based progression tracker** — spherical-equivalent trend over visits and D/year vs. age-banded reference; the at-risk determination is left to the clinician.
+
+> **Provisional pending hardware confirmation (Reehana, Q3/Q7/Q8).** The 6 mm pupil columns, vertex distance (25–30 mm), and sphere/cylinder ranges are flagged provisional in the UI and isolated in named constants. Built to the confirmed 4 mm baseline; the provisional surfaces flip off with a one-line change if not confirmed.
 
 ### What's implemented
 - **Two-stage flow** mapped onto the shared three-phase framework:
@@ -371,4 +382,4 @@ These will be brought to clinical fidelity in priority order. The clinical evalu
 
 This document is updated at each clinical-fidelity milestone. If the clinical evaluation team identifies a deviation from current published standards, please flag it for the next revision. Contact Method Marketing Agency through the standard project channels.
 
-*Method Marketing Agency · xoExam UI/UX Clinical Standards Reference · v0.2.6 · June 2, 2026*
+*Method Marketing Agency · xoExam UI/UX Clinical Standards Reference · v0.2.7 · June 8, 2026*

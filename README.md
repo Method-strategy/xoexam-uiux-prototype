@@ -8,11 +8,11 @@ Designed by [Method Marketing Agency](https://methoddigitalmarketing.com).
 
 ## Start here (in order)
 
-1. **`xoExam UI-UX Engineering Handoff Specification v0.2.6.docx`** — master handoff document, current version. Read this first. Covers the engineering quick start, ExamShell component contract, integration touchpoints, the open decisions flagged as the engineering kickoff agenda, regulatory acknowledgment, React-Native portability notes, and the full asset inventory.
+1. **`xoExam UI-UX Engineering Handoff Specification v0.2.7.docx`** — master handoff document, current version. Read this first. Covers the engineering quick start, ExamShell component contract, integration touchpoints, the open decisions flagged as the engineering kickoff agenda, regulatory acknowledgment, React-Native portability notes, and the full asset inventory.
 
-2. **`CLAUDE.md`** — project memory and source of truth. Design system, color tokens, typography scale, component interface contract, version log (v0.1.0 → v0.2.6), and the architectural rules that govern the prototype.
+2. **`CLAUDE.md`** — project memory and source of truth. Design system, color tokens, typography scale, component interface contract, version log (v0.1.0 → v0.2.7), and the architectural rules that govern the prototype.
 
-3. **`briefs/`** — per-test clinical specifications, one per clinical-fidelity test: Visual Acuity, Color Vision, Visual Fields, Wavefront Aberrometry, Extraocular Motility, Pupillometry, **Wavefront Refraction (new in v0.2.6)**. The clinician-facing companions live at the project root — **`xoExam Clinical Evaluation Brief.md`** (panel-evaluation guide) and **`xoExam Clinical Standards Reference.md`** (per-test standards summary).
+3. **`briefs/`** — per-test clinical specifications, one per clinical-fidelity test: Visual Acuity, Color Vision, Visual Fields, Wavefront Aberrometry, Extraocular Motility, Pupillometry, **Wavefront Refraction (v2 — six competitive-parity enhancements merged in v0.2.7)**. The clinician-facing companions live at the project root — **`xoExam Clinical Evaluation Brief.md`** (panel-evaluation guide) and **`xoExam Clinical Standards Reference.md`** (per-test standards summary).
 
 4. **`index.html`** — the live prototype. Open directly in a browser (Chrome/Edge recommended). No build step required.
 
@@ -28,10 +28,10 @@ Designed by [Method Marketing Agency](https://methoddigitalmarketing.com).
 | `components/` | All React component files (`.jsx`), loaded by the prototype |
 | `assets/` | Logos, marketing imagery, test-specific icons |
 | `briefs/` | Per-test clinical specifications (seven tests at clinical fidelity) |
-| `_dist_v0.2.6/` | Current deployment package (zipped for hosting) |
-| `_dist_v0.2.5/` · earlier | Previous deployment packages (retained for reference) |
-| `xoExam UI-UX Engineering Handoff Specification v0.2.6.docx` | Master handoff spec (current) |
-| `xoExam Development Brief 06-02-2026 v0.2.6.docx` | Release-specific brief (current) |
+| `_dist_v0.2.7/` | Current deployment package (zipped for hosting) |
+| `_dist_v0.2.6/` · earlier | Previous deployment packages (retained for reference) |
+| `xoExam UI-UX Engineering Handoff Specification v0.2.7.docx` | Master handoff spec (current) |
+| `xoExam Development Brief 06-08-2026 v0.2.7.docx` | Release-specific brief (current) |
 | `xoExam Development Brief.docx` | Cumulative client-facing progress brief |
 | `xoExam Clinical Standards Reference.md` / `.docx` | Per-test standards summary (clinician-facing) |
 | `xoExam Clinical Evaluation Brief.md` / `.docx` | Panel evaluation guide (clinician-facing) |
@@ -39,12 +39,12 @@ Designed by [Method Marketing Agency](https://methoddigitalmarketing.com).
 
 ---
 
-## Current status (v0.2.6)
+## Current status (v0.2.7)
 
 - **Architecture:** Single-file React 18.3.1 + Babel Standalone (CDN), no build toolchain. Designed for port to **React Native + Kotlin** for the production Android tablet.
-- **Tests at clinical fidelity (7 of 19):** Visual Acuity, Color Vision (Ishihara + D-15 Farnsworth), Visual Fields, Wavefront Aberrometry, Extraocular Motility, Pupillometry, **Wavefront Refraction (new in v0.2.6)**.
-- **Program status:** Active, versioned development. Each release brings one or more tests to clinical fidelity and reissues the handoff doc set with an accurate per-version changelog. The remaining 12 tests in the catalog are visual-fidelity placeholders awaiting their own clinical rebuilds; the clinical evaluation panel's input on prioritization is welcomed.
-- **New in v0.2.6:** **Wavefront Refraction** — a new two-stage refraction test (`id: wavefront-refraction`) added as a parallel test that supersedes but does not remove Wavefront Aberrometry (both stay in the catalog). It is the combined replacement for the traditional autorefractor + phoropter workflow: Stage 1 objective wavefront capture (OD→OS, using the live eye-scan look — dark viewer, breathing pupil, sweep line, red-dot-turns-green alignment lock), Stage 2 subjective liquid-lens digital phoropter (setup → sphere/MPMVA → JCC axis → JCC power → add). Clinical non-negotiables: axis-before-power JCC ordering, +0.75 D fogging prompt, sphere-compensation note, signed-2dp Rx discipline, monocular (no OU averaging), scan-count documentation, Certify & close framed as the Rx-release system event that gates the downstream xoFit job, and — deliberately — no clinical claims in the report (a refraction is a measurement/verification workflow, not a screening). Also in this pass: standalone Visual Acuity gained geometric Tumbling E / Tumbling C optotypes (shared with the subjective phoropter stage).
+- **Tests at clinical fidelity (7 of 19):** Visual Acuity, Color Vision (Ishihara + D-15 Farnsworth), Visual Fields, Wavefront Aberrometry, Extraocular Motility, Pupillometry, **Wavefront Refraction**.
+- **Program status:** Active, versioned, pre-beta development pending final feedback from MPR and Xenon's Chief Medical Officer + doctor panel. Each release brings one or more tests to clinical fidelity and reissues the handoff doc set with an accurate per-version changelog. The remaining 12 tests in the catalog are visual-fidelity placeholders awaiting their own clinical rebuilds; the clinical evaluation panel's input on prioritization is welcomed.
+- **New in v0.2.7:** **Wavefront Refraction — six competitive-parity enhancements merged into the single production component.** The enhancement pass that had been carried in a parallel draft file was folded directly into `components/WavefrontRefractionTest.jsx` (the parallel `v2` file was deleted — one file, one source of truth). The six additions, all doctor-led-safe (measurements/simulations, never verdicts): (1) PSF + simulated-VA before/after; (2) binocular balance step via fogging/alternate occlusion (no prism); (3) multi-source Rx comparison (objective/subjective/habitual/unaided + spherical-equivalent deltas); (4) photopic-vs-mesopic day-&-night refraction with a Diff row; (5) Smart-Cylinder auto-bracketing on the JCC; (6) refraction progression tracker (SE trend + D/yr vs age-banded reference, at-risk call left to the clinician). The report was restructured into tabs. Every hardware-gated value (6 mm pupil columns, vertex range, Rx ranges) is isolated in named constants and stays provisional pending Reehana's confirmation — they flip with a one-line edit, no rebuild.
 - **Live deployment:** [xoexam-uiux.netlify.app](https://xoexam-uiux.netlify.app)
 
 ---
@@ -53,4 +53,4 @@ Designed by [Method Marketing Agency](https://methoddigitalmarketing.com).
 
 The handoff specification is the working document. Its "Open decisions — engineering kickoff agenda" section lists the items we need to resolve together — hardware-to-UI event contract, per-test data persistence schema, authentication model, export mechanism, the role/permissions model that gates Doctor sign-off, and others. Wavefront Refraction adds the most consequential one yet: **Certify & close must be wired as the Rx-release system event** that hands the verified prescription to the downstream xoFit job object.
 
-This prototype is **the design and interaction reference**, not the production codebase. The `.jsx` files are written for portability — inline styles, hooks-only, no exotic dependencies — so the port to React Native is mechanical: swap primitives (`<div>` → `<View>`, `<button>` → `<Pressable>`, etc.), translate inline styles to `StyleSheet`, swap `localStorage` for `AsyncStorage`. See the v0.2.6 handoff spec for the full RN portability table.
+This prototype is **the design and interaction reference**, not the production codebase. The `.jsx` files are written for portability — inline styles, hooks-only, no exotic dependencies — so the port to React Native is mechanical: swap primitives (`<div>` → `<View>`, `<button>` → `<Pressable>`, etc.), translate inline styles to `StyleSheet`, swap `localStorage` for `AsyncStorage`. See the v0.2.7 handoff spec for the full RN portability table.

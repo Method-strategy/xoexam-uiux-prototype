@@ -24,7 +24,7 @@ The seven clinically-faithful tests:
 6. Pupillometry
 7. Wavefront Refraction
 
-The remaining tests in the catalog await their own clinical rebuilds in subsequent releases. The entire UI/UX ships as one unified build — currently v0.2.6; a test reaching clinical fidelity in an earlier release is correct and unchanged since then, not running older software.
+The remaining tests in the catalog await their own clinical rebuilds in subsequent releases. The entire UI/UX ships as one unified build — currently v0.2.7; a test reaching clinical fidelity in an earlier release is correct and unchanged since then, not running older software.
 
 ---
 
@@ -237,6 +237,7 @@ Produce a verified spectacle prescription by combining an objective starting mea
 - **Rx discipline:** SPH/CYL signed + 2 dp; AXIS integer + °; ADD signed with D or "—". Monocular throughout — no OU averaging
 - **Optotype selector** (Letters / Tumbling E / Tumbling C) drawn as geometric SVG optotypes, shared with Visual Acuity, for pediatric / non-literate / non-Latin-script patients; additive VA notation (e.g. 20/25 +4) surfaced as best VA so far
 - **Report:** Final Prescription hero (signed Rx + ADD + BCVA per eye); Objective Results and Subjective Correction two-box; wavefront analysis with 3 mm / 5 mm ring overlay toggle, zoom-scope, and color-scale legend; data-only Clinical Summary; Doctor sign-off above Certify & close
+- **New in v0.2.7 — six competitive-parity enhancements (all measurements/simulations, never verdicts):** (1) **PSF + simulated-VA** before/after, habitual vs. new Rx; (2) **binocular balance** step after both eyes via fogging / alternate occlusion (no prism); (3) **multi-source Rx comparison** — objective / subjective / habitual / unaided with spherical-equivalent deltas; (4) **photopic vs. mesopic (day & night)** — 4 mm confirmed plus a provisional 6 mm column and a night-shift Diff row; (5) **Smart-Cylinder auto-bracketing** on the JCC (step auto-sizes to cylinder magnitude, narrows after each reversal); (6) **refraction progression tracker** — spherical-equivalent trend + D/yr vs. age-banded reference, at-risk call left to the clinician. The report is now organized into tabs (Summary · Rx comparison · Day & night · Vision simulation · Wavefront · Progression). The 6 mm columns, vertex range, and Rx ranges are flagged **provisional** pending hardware confirmation.
 - **Certify & close is a system event** — it releases the verified Rx to the downstream xoFit job object (not a UI-only action)
 
 ### What we'd like the panel to evaluate
@@ -245,6 +246,7 @@ Produce a verified spectacle prescription by combining an objective starting mea
 - Is the "no clinical claims / measurement-and-verification only" stance for the report the right call, versus the interpretive banners the other tests carry?
 - What is the right pass/fail acuity threshold for the subjective endpoint? (Currently "more than half correct," flagged for validation.)
 - Does anything about the certified-Rx-as-release-gate model raise a clinical or workflow concern?
+- On the six v0.2.7 enhancements: does the **binocular balance** via fogging/alternate occlusion (no prism) read as clinically valid? Are the **multi-source Rx comparison**, **day-&-night (photopic/mesopic)**, and **progression tracker** the right competitive-parity additions, presented as data rather than verdicts? Is the **Smart-Cylinder auto-bracketing** behavior on the JCC what you'd expect?
 
 ### What's coming (not yet in the UI)
 A patient-facing headset view for an objective self-administered mode (this component is the tablet / technician-doctor view only), and the engineering wiring that turns Certify & close into the downstream Rx-release event. Both depend on scoping with engineering.
@@ -306,4 +308,4 @@ Please return your observations through the standard project channels. The devel
 
 ---
 
-*Method Marketing Agency · xoExam UI/UX Clinical Evaluation Brief · v0.2.6 · June 2, 2026*
+*Method Marketing Agency · xoExam UI/UX Clinical Evaluation Brief · v0.2.7 · June 8, 2026*

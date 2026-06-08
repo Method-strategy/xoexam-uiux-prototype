@@ -1,5 +1,22 @@
-// WavefrontRefractionTest.jsx — Method Marketing Agency, May 2026
+// WavefrontRefractionTest v2.jsx — Method Marketing Agency, June 2026 · v0.2.7 DRAFT
 // xoExam clinical tablet UI — 1280×800 base canvas
+//
+// ┌─ v0.2.7 DRAFT — competitive-parity pass (Marco OPD-Scan III + Reichert Phoroptor VRx) ─┐
+// │ Adds the six CD-approved enhancements (Jun 2026) in one pass:                          │
+// │   1. PSF + simulated-VA before/after (driven by Zernike, tied to old-vs-new Rx)        │
+// │   2. Binocular balance step (fogging / alternate occlusion — no prism needed)          │
+// │   3. Multi-source Rx comparison (objective · subjective · habitual · unaided + deltas)  │
+// │   4. Photopic vs. mesopic refraction with a Diff row (day-vs-night)                     │
+// │   5. Smart-Cylinder auto-bracketing on the JCC (step shrinks after each reversal)       │
+// │   6. Refraction-based progression tracker (spherical-equiv trend vs age-banded norms)   │
+// │                                                                                          │
+// │ REEHANA-GATED VALUES ARE ISOLATED at the top (WFR_ANALYSIS_DIA / WFR_SIXMM_PROVISIONAL   │
+// │ / WFR_ZERNIKE_* / WFR_VERTEX_MM / WFR_*_RANGE). Built to the 4 mm CONFIRMED baseline;    │
+// │ every 6 mm / range / vertex surface carries a visible "Provisional" tag. If Reehana      │
+// │ does NOT confirm Q3/Q7/Q8: flip WFR_SIXMM_PROVISIONAL → false and edit the range/vertex   │
+// │ constants — no teardown, no rebuild. See briefs/WavefrontRefraction_Clinical_Spec_v1.md. │
+// └──────────────────────────────────────────────────────────────────────────────────────┘
+//
 // Two-stage refraction: Stage 1 Objective (wavefront capture) → Stage 2 Subjective (liquid-lens phoropter)
 // Built from: WavefrontAberrometryTest.jsx (capture state machine, wavefront map, data table, report)
 //           + RefractionAndContrast.jsx RefractionTest (live eye-scan look & feel for objective capture)
@@ -26,6 +43,57 @@ const WFR_OBJ = {
   OS: { sph:-1.50, cyl:-0.75, axis:170, pupilSize:6.3, analysisDia:6.0, scans:1, rmsHOA:0.284, comaRMS:0.187, sphAb:0.092 },
 };
 const WFR_MAX_SCANS = 3;
+
+// ════════════════════════════════════════════════════════════════════════
+// REEHANA-GATED CONSTANTS (v0.2.7 draft · Jun 8 2026)
+// ────────────────────────────────────────────────────────────────────────
+// The ONLY values dependent on the open headset-sensor answers (Q3/Q7/Q8 of
+// "xoExam Headset Sensor Questions", Jun 2026). Steve CONFIRMED: 4 mm imaging,
+// dim-vs-bright pupil detection, 10th-order / 66-mode Zernike, vertex 25–30 mm.
+// PENDING Reehana's optical team: the 6 mm pupil column, the exact Zernike
+// ceiling, and the FINAL auto-refraction sphere/cyl range + vertex (Q8 came
+// back blank / "not final"). Everything driven by these carries a visible
+// "Provisional" tag. To stand the 6 mm column down: flip the flag → false.
+const WFR_ANALYSIS_DIA      = 4.0;   // mm — CONFIRMED (Steve, Q3/Q7)
+const WFR_SIXMM_PROVISIONAL = true;  // true → 6 mm column shown + flagged; false → hidden
+const WFR_ZERNIKE_MAX_ORDER = 10;    // 10th order stated; pending optical-team confirm (Q7)
+const WFR_ZERNIKE_MODES     = 66;    // 66 modes at 10th order
+const WFR_VERTEX_MM         = '25–30'; // mm — range NOT final (Q8)
+const WFR_SPHERE_RANGE      = '−20.00 to +20.00 D'; // PLACEHOLDER — Q8 returned blank
+const WFR_CYL_RANGE         = '0.00 to −10.00 D';   // PLACEHOLDER — Q8 returned blank
+
+// Habitual (current spectacle) Rx — manual entry now; auto-pull from cloud
+// history later (Q9 confirmed: time-series patient profile is the goal).
+const WFR_HABITUAL_SEED = {
+  OD: { sph:-1.00, cyl:-0.25, axis:160, add:0 },
+  OS: { sph:-1.25, cyl:-0.50, axis:175, add:0 },
+};
+
+// Photopic (bright / small pupil) vs. mesopic (dim / large pupil) refraction.
+// 4 mm analysis is CONFIRMED; the 6 mm column is provisional. Mesopic typically
+// shifts more minus (night myopia). Values are sphere offsets from subjective.
+const WFR_DAYNIGHT = {
+  OD: { photo4:0.00, meso4:-0.25, photo6:0.00, meso6:-0.50 },
+  OS: { photo4:0.00, meso4:-0.25, photo6:-0.25, meso6:-0.50 },
+};
+
+// Spherical-equivalent history per eye (cloud time-series, Q9). Most-recent
+// visit is the current exam, appended live from the subjective endpoint.
+const WFR_VISITS = {
+  OD: [{ y:'2021', se:-0.50 }, { y:'2022', se:-0.75 }, { y:'2023', se:-1.00 }, { y:'2024', se:-1.13 }, { y:'2025', se:-1.38 }],
+  OS: [{ y:'2021', se:-0.75 }, { y:'2022', se:-1.00 }, { y:'2023', se:-1.25 }, { y:'2024', se:-1.50 }, { y:'2025', se:-1.75 }],
+};
+// Age-banded mean myopia-progression reference (D/yr, magnitude). Reference
+// only — the "at-risk" determination stays the clinician's call (doctor-led).
+const WFR_PROG_NORMS = [
+  { band:'7–9 yr',   lo:0.50, hi:1.00 },
+  { band:'10–12 yr', lo:0.40, hi:0.75 },
+  { band:'13–15 yr', lo:0.25, hi:0.50 },
+  { band:'16–17 yr', lo:0.15, hi:0.35 },
+  { band:'Adult',    lo:0.00, hi:0.15 },
+];
+const WFR_PATIENT_AGE = 42; // Marcus Williams, b. 1983
+const WFR_PATIENT_BAND = 'Adult';
 
 // VA chart lines — Snellen ladder. fs = on-screen reference size.
 const WFR_VA_LINES = [
@@ -58,10 +126,44 @@ const WFR_fmtSph = v => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
 const WFR_fmtCyl = v => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
 const WFR_fmtAxis = v => `${Math.round(((v % 180) + 180) % 180) || 180}°`;
 const WFR_fmtAdd = v => (v > 0 ? `+${v.toFixed(2)} D` : '—');
+const WFR_fmtSE  = v => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2)); // spherical equivalent
+const WFR_SE = r => r.sph + r.cyl / 2;
+const WFR_fmtDelta = (v, unit) => Math.abs(v) < 0.001 ? '—' : `${v > 0 ? '+' : ''}${unit === '°' ? Math.round(v) : v.toFixed(2)}${unit === '°' ? '°' : ''}`;
+
+// #5 Smart-Cylinder bracket ladders. Initial step keys off |cyl|; the working
+// step shrinks one rung per reversal so the endpoint converges (Reichert-style).
+const WFR_PWR_LADDER = [0.50, 0.25];               // dioptric brackets
+const WFR_AXIS_LADDER = [15, 10, 5, 3, 1];         // degrees
+const WFR_powerStepFor = (cylMag, reversals) => {
+  const start = cylMag >= 1.0 ? 0 : 1;             // ≥1.00 D starts coarse
+  const idx = Math.min(start + reversals, WFR_PWR_LADDER.length - 1);
+  return WFR_PWR_LADDER[idx];
+};
+const WFR_axisStepFor = (cylMag, reversals) => {
+  const start = cylMag >= 1.5 ? 0 : cylMag >= 0.75 ? 1 : 2;
+  const idx = Math.min(start + reversals, WFR_AXIS_LADDER.length - 1);
+  return WFR_AXIS_LADDER[idx];
+};
+
+// Provisional tag — marks every surface gated on Reehana's Q3/Q7/Q8 answers.
+function WFR_ProvTag({ note, small }) {
+  return (
+    <span title={note || 'Provisional — pending optical-team confirmation (Reehana, Q3/Q7/Q8)'}
+      style={{ display:'inline-flex', alignItems:'center', gap:4, padding: small ? '2px 7px' : '3px 9px', borderRadius:20, background:'#fffbeb', border:'1.5px solid #fcd34d', color:'#b45309', fontSize: small ? 9 : 10, fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase', whiteSpace:'nowrap', verticalAlign:'middle' }}>
+      <svg width={small ? 9 : 10} height={small ? 9 : 10} viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      Provisional
+    </span>
+  );
+}
 
 // Clinical line-pass rule: more than half correct (50% fail threshold,
 // pending standards validation — see briefs/WavefrontRefraction_Clinical_Spec_v1.md §TBD).
 const WFR_lineIsPassed = (correct, total) => total > 0 && correct > total / 2;
+
+// Chart-walk tuning (ported from the v3 chart-interaction model, Jun 2026).
+// MPMVA stages use a frontier walk starting at 20/70; JCC stays a focused read.
+const WFR_WALK_START = 3;
+const WFR_SETTLE_MS = 850; // delay before the active char/line advances (cancellable)
 
 // Optotype renderer (shared shape with VisualAcuityTest's VA_Optotype).
 // 'E' = Snellen tumbling E (3 bars + spine); 'C' = Landolt C (ring with gap).
@@ -348,10 +450,14 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
   const [fogAmount, setFogAmount] = React.useState(0.75);
   const [isCorrected, setIsCorrected] = React.useState(false);
   const [subjEye, setSubjEye] = React.useState('OD');
-  const [subjStep, setSubjStep] = React.useState('setup'); // setup · sphere · jcc-axis · jcc-power · mpmva2 · add
+  const [subjStep, setSubjStep] = React.useState('setup'); // setup · sphere · jcc-axis · jcc-power · mpmva2 · add · binocular
   const [jccPower, setJccPower] = React.useState(0.50);
   const [jccFlip, setJccFlip] = React.useState(1);
   const [comparisons, setComparisons] = React.useState(0);
+  // #5 Smart-Cylinder auto-bracketing: step shrinks after each preference reversal
+  const [smartBracket, setSmartBracket] = React.useState(true);
+  const [jccReversals, setJccReversals] = React.useState(0);
+  const [jccLastPref, setJccLastPref] = React.useState(null); // 1 | 2 — to detect reversals
   const [subjRx, setSubjRx] = React.useState({
     OD: { sph:0, cyl:0, axis:0, add:0 },
     OS: { sph:0, cyl:0, axis:0, add:0 },
@@ -367,6 +473,18 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
   const [doneEyesSubj, setDoneEyesSubj] = React.useState(new Set());
   const [optotype, setOptotype] = React.useState('letters'); // letters | tumblingE | tumblingC
   const [optoRot, setOptoRot] = React.useState({});           // key `${eye}_${n}_${idx}` → deg
+
+  // ── Chart frontier-navigation model (ported from v3 chart model, Jun 2026) ──
+  // Applies to the MPMVA stages (sphere / 2nd MPMVA); JCC stays a focused read.
+  const [pos, setPos] = React.useState(WFR_WALK_START);            // active chart line
+  const [frontier, setFrontier] = React.useState(WFR_WALK_START);  // furthest line reached
+  const [charPtr, setCharPtr] = React.useState(0);                 // E/C: optotype patient is on
+  const [settledLines, setSettledLines] = React.useState(new Set()); // left/recorded → gate back-edits
+  const [chartOverrides, setChartOverrides] = React.useState([]);  // audit: ahead-of-progress jumps
+  const [chartEdits, setChartEdits] = React.useState([]);          // audit: recorded-answer back-edits
+  const [pendingOverride, setPendingOverride] = React.useState(null);
+  const [pendingEdit, setPendingEdit] = React.useState(null);
+  const [chartToast, setChartToast] = React.useState(null);
   const genOptoRot = () => {
     const m = {};
     objSequence.forEach(e => WFR_VA_LINES.forEach(l => l.letters.forEach((_, i) => {
@@ -385,6 +503,14 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
   const [showRings, setShowRings] = React.useState(false);
   const [zoomEye, setZoomEye] = React.useState(null); // eye key for zoom modal
   const [zoomPan, setZoomPan] = React.useState({ x:0, y:0 });
+  const [reportTab, setReportTab] = React.useState('summary'); // summary·comparison·daynight·simulation·wavefront·progression
+
+  // #2 Binocular balance (after both eyes refined) — fogging / alternate occlusion
+  const [binocOcclude, setBinocOcclude] = React.useState('both'); // OD | OS | both — which eye is open
+  const [binocFog, setBinocFog] = React.useState(true);
+  const [binocBalanced, setBinocBalanced] = React.useState(false);
+  // #3 Habitual (current spectacle) Rx — manual entry; auto-pull from history later
+  const [habitualRx, setHabitualRx] = React.useState(WFR_HABITUAL_SEED);
 
   // Collapsibles
   const [openAlign, setOpenAlign] = React.useState(false);
@@ -395,6 +521,8 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
   const timerRef = React.useRef(null);
   const progressRef = React.useRef(null);
   const frameRef = React.useRef(null);
+  const advanceRef = React.useRef(null);
+  const charAdvRef = React.useRef(null);
 
   const fmtTime = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
@@ -444,6 +572,18 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
       return () => clearTimeout(t);
     }
   }, [progress, objPhase, objEye]);
+
+  // Reset the chart walk on entering an MPMVA stage — clinically each lens setting
+  // is its own acuity read, so the frontier/guard rails start fresh per stage
+  // (decision A, validated Jun 2026; see VisualAcuity_v3_ChartModel spec §F).
+  React.useEffect(() => {
+    if (subjStep === 'sphere' || subjStep === 'mpmva2') {
+      if (advanceRef.current) { clearTimeout(advanceRef.current); advanceRef.current = null; }
+      if (charAdvRef.current) { clearTimeout(charAdvRef.current); charAdvRef.current = null; }
+      setPos(WFR_WALK_START); setFrontier(WFR_WALK_START); setCharPtr(0); setSettledLines(new Set());
+      setChartResults(r => { const c = { ...r }; WFR_VA_LINES.forEach(l => { delete c[`${subjEye}_${l.n}`]; }); return c; });
+    }
+  }, [subjStep, subjEye]);
 
   // ── Objective flow ──
   const beginObjective = () => {
@@ -523,7 +663,7 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
   const stepLabels = { sphere:'Sphere (MPMVA)', 'jcc-axis':'Cylinder axis', 'jcc-power':'Cylinder power', mpmva2:'Second MPMVA', add:'Near addition' };
 
   const advanceSubjStep = () => {
-    setComparisons(0); setJccFlip(1);
+    setComparisons(0); setJccFlip(1); setJccReversals(0); setJccLastPref(null);
     if (subjStep === 'setup') { setSubjStep('sphere'); return; }
     if (subjStep === 'sphere') { setSubjStep('jcc-axis'); return; }
     if (subjStep === 'jcc-axis') { setSubjStep('jcc-power'); return; }
@@ -543,8 +683,27 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
     if (subjEye === 'OD') {
       setSubjEye('OS'); setSubjStep('setup'); setComparisons(0);
     } else {
-      setStage('report');
+      // both eyes refined → binocular balance gate (full + subjective-only both apply)
+      setBinocBalanced(false); setBinocOcclude('both'); setBinocFog(true);
+      setSubjStep('binocular');
     }
+  };
+
+  // #2 Binocular balance — fogging / alternate occlusion; balances accommodation
+  // between the two eyes (no prism required — Q10: optics introduce no prism).
+  const nudgeBalance = (eye, delta) => {
+    setSubjRx(prev => ({ ...prev, [eye]: { ...prev[eye], sph: parseFloat((prev[eye].sph + delta).toFixed(2)) } }));
+  };
+  const completeBinocular = () => { setBinocBalanced(true); setStage('report'); };
+
+  // #3 Habitual (old) Rx steppers
+  const adjustHabitual = (eye, field, delta) => {
+    setHabitualRx(prev => {
+      let val = prev[eye][field] + delta;
+      if (field === 'axis') val = ((val % 180) + 180) % 180;
+      const dp = field === 'axis' ? 0 : 2;
+      return { ...prev, [eye]: { ...prev[eye], [field]: parseFloat(val.toFixed(dp)) } };
+    });
   };
 
   // ── VA chart marking (subjective) ──
@@ -592,9 +751,13 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
     setIsCorrected(false); setSubjEye('OD'); setSubjStep('setup'); setComparisons(0);
     setSubjRx({ OD:{sph:0,cyl:0,axis:0,add:0}, OS:{sph:0,cyl:0,axis:0,add:0} });
     setChartResults({}); setDoneEyesSubj(new Set());
+    setPos(WFR_WALK_START); setFrontier(WFR_WALK_START); setCharPtr(0); setSettledLines(new Set());
+    setChartOverrides([]); setChartEdits([]); setPendingOverride(null); setPendingEdit(null); setChartToast(null);
     setOptotype('letters'); setOptoRot({});
     setElapsed(0); setNotes('');
     setResultView('full-wavefront'); setResultEye('both'); setShowRings(false); setZoomEye(null);
+    setReportTab('summary'); setJccReversals(0); setJccLastPref(null); setSmartBracket(true);
+    setBinocOcclude('both'); setBinocFog(true); setBinocBalanced(false); setHabitualRx(WFR_HABITUAL_SEED);
   };
 
   // ── Small shared sub-renderers ──
@@ -679,25 +842,24 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
           <div style={{ textAlign:'center', marginBottom:30 }}>
             <div style={{ ...WFR_VIOLATOR, color:accent, marginBottom:8 }}>Select refraction mode</div>
             <p style={{ fontSize:14, fontWeight:400, color:'#6b7280', margin:'0 auto', maxWidth:560, lineHeight:1.6 }}>
-              Wavefront refraction combines objective measurement and subjective refinement in a single headset. Both stages can be run together or independently.
+              Wavefront refraction combines objective measurement and subjective refinement. Both stages can be run together or independently.
             </p>
           </div>
           <div style={{ display:'flex', gap:20, alignItems:'stretch' }}>
             <Card
               icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/></svg>}
-              title="Full refraction"
-              desc="Objective wavefront measurement first, then subjective refinement with the liquid lens. Recommended for comprehensive refraction."
-              badge="Recommended"
+              title="Objective + subjective"
+              desc="Objective wavefront capture first, then subjective refinement with the liquid lens — the complete two-stage workflow."
               onClick={beginObjective}
-              btn="Begin full refraction"
+              btn="Begin objective + subjective"
             />
             <Card
               icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5h16M4 12h16M4 19h10"/></svg>}
               title="Subjective only"
-              desc="Skip objective measurement and proceed directly to subjective refinement. Use when recent objective data is already available."
-              note="Objective values will need to be entered manually as the starting point."
+              desc="Subjective refinement with the liquid lens only; the objective wavefront capture is skipped. Use when recent objective data is already available."
+              note="Objective starting values are entered manually as the reference point."
               onClick={beginSubjectiveOnly}
-              btn="Begin subjective"
+              btn="Begin subjective only"
             />
           </div>
         </div>
@@ -908,6 +1070,251 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
     </div>
   );
 
+  // ════════════════════════════════════════════════════════════════════
+  // Frontier chart model (MPMVA stages) — ported from the v3 chart demo.
+  // Writes the SAME chartResults shape the report's getBestVA already reads.
+  const WFR_cancelAdvance = () => { if (advanceRef.current) { clearTimeout(advanceRef.current); advanceRef.current = null; } };
+  const WFR_cancelCharAdv = () => { if (charAdvRef.current) { clearTimeout(charAdvRef.current); charAdvRef.current = null; } };
+  const WFR_lineLen = (n) => (WFR_VA_LINES.find(l => l.n === n) || { letters: [] }).letters.length;
+  const WFR_hasMark = (eye, n) => (chartResults[chartKey(eye, n)] || []).some(x => x != null);
+  const WFR_encountered = (n) => n <= frontier;
+  const WFR_rowState = (eye, n) => n === pos ? 'active' : WFR_hasMark(eye, n) ? 'completed' : WFR_encountered(n) ? 'available' : 'locked';
+  const WFR_isOpto = optotype !== 'letters';
+  const WFR_optoKind = optotype === 'tumblingC' ? 'C' : 'E';
+  const WFR_charUnlocked = (eye, n, idx) => { if (!WFR_isOpto) return true; if (n !== pos) return true; const m = chartResults[chartKey(eye, n)] || []; return idx === 0 || m[idx - 1] != null; };
+  const WFR_lineComplete = (eye, n) => { const m = chartResults[chartKey(eye, n)]; return !!(m && m.length === WFR_lineLen(n) && m.every(x => x != null)); };
+  const WFR_flashToast = (msg) => { setChartToast(msg); setTimeout(() => setChartToast(null), 2600); };
+  const WFR_settle = (eye, n) => { if ((chartResults[chartKey(eye, n)] || []).some(x => x != null)) setSettledLines(s => { const x = new Set(s); x.add(chartKey(eye, n)); return x; }); };
+
+  const WFR_toggleChar = (eye, n, idx, allowAdvance) => {
+    if (!WFR_charUnlocked(eye, n, idx)) return;
+    WFR_cancelAdvance(); WFR_cancelCharAdv();
+    const prev = getLine(eye, n);
+    const next = [...prev];
+    next[idx] = next[idx] === null ? 'correct' : next[idx] === 'correct' ? 'incorrect' : null;
+    setChartResults(r => ({ ...r, [chartKey(eye, n)]: next }));
+    if (n === pos) {
+      if (WFR_isOpto) {
+        setCharPtr(idx);
+        if (next[idx] != null) { let nx = -1; for (let j = idx + 1; j < next.length; j++) { if (next[j] == null) { nx = j; break; } } if (nx >= 0) charAdvRef.current = setTimeout(() => { charAdvRef.current = null; setCharPtr(nx); }, WFR_SETTLE_MS); }
+      }
+      if (allowAdvance && next.every(m => m != null)) {
+        const correct = next.filter(m => m === 'correct').length;
+        if (WFR_lineIsPassed(correct, next.length) && n < 10) {
+          advanceRef.current = setTimeout(() => { advanceRef.current = null; setSettledLines(s => { const x = new Set(s); x.add(chartKey(eye, n)); return x; }); setFrontier(f => Math.max(f, n + 1)); setPos(n + 1); }, WFR_SETTLE_MS);
+        }
+      }
+    }
+  };
+  const WFR_onCharClick = (eye, n, idx) => {
+    if (!WFR_encountered(n)) { setPendingOverride(n); return; }
+    const marks = chartResults[chartKey(eye, n)] || [];
+    if (settledLines.has(chartKey(eye, n)) && marks[idx] != null) { setPendingEdit({ n, idx }); return; }
+    if (n !== pos) { setPos(n); WFR_toggleChar(eye, n, idx, false); return; }
+    WFR_toggleChar(eye, n, idx, true);
+  };
+  const WFR_applyEdit = ({ n, idx }) => {
+    const eye = subjEye;
+    const prev = getLine(eye, n); const before = prev[idx];
+    const after = before === null ? 'correct' : before === 'correct' ? 'incorrect' : null;
+    const arr = [...prev]; arr[idx] = after;
+    const va = (WFR_VA_LINES.find(l => l.n === n) || {}).va;
+    WFR_cancelAdvance(); WFR_cancelCharAdv();
+    setSettledLines(s => { const x = new Set(s); if ((chartResults[chartKey(eye, pos)] || []).some(m => m != null)) x.add(chartKey(eye, pos)); x.delete(chartKey(eye, n)); return x; });
+    setChartResults(r => ({ ...r, [chartKey(eye, n)]: arr }));
+    setChartEdits(e => [...e, { ts: Date.now(), eye, va, idx, from: before, to: after }]);
+    setPos(n);
+    WFR_flashToast(`Answer edit recorded · ${va} letter ${idx + 1}`);
+  };
+  const WFR_doOverride = (n) => {
+    const eye = subjEye; WFR_cancelAdvance(); WFR_cancelCharAdv(); WFR_settle(eye, pos);
+    const target = WFR_VA_LINES.find(l => l.n === n) || {};
+    const cur = WFR_VA_LINES.find(l => l.n === pos) || {};
+    setChartOverrides(o => [...o, { ts: Date.now(), from: cur.va, to: target.va, eye }]);
+    setFrontier(f => Math.max(f, n)); setPos(n);
+    WFR_flashToast(`Override recorded · ${cur.va} → ${target.va}`);
+  };
+  const WFR_goToLine = (n) => { const t = Math.max(1, Math.min(10, n)); if (t === pos) return; WFR_cancelAdvance(); WFR_cancelCharAdv(); WFR_settle(subjEye, pos); if (WFR_encountered(t)) setPos(t); else setPendingOverride(t); };
+  const WFR_clearLine = () => { WFR_cancelAdvance(); WFR_cancelCharAdv(); setCharPtr(0); setChartResults(r => { const c = { ...r }; delete c[chartKey(subjEye, pos)]; return c; }); };
+  const WFR_endHere = () => { WFR_cancelAdvance(); WFR_cancelCharAdv(); const cur = getLine(subjEye, pos).slice(); for (let i = 0; i < cur.length; i++) if (cur[i] == null) cur[i] = 'incorrect'; setChartResults(r => ({ ...r, [chartKey(subjEye, pos)]: cur })); };
+
+  // 4-way clicker glyph — the patient's response device for Tumbling E / Landolt C.
+  // Highlights the direction the patient presses for the shown optotype orientation.
+  const WFR_rotToDir = (rot) => ({ 0:'right', 90:'down', 180:'left', 270:'up' }[((rot % 360) + 360) % 360] || 'right');
+  const WFR_ClickerGlyph = ({ dir }) => {
+    const cell = (gc, gr, on, key) => <div key={key} style={{ gridColumn:gc, gridRow:gr, width:16, height:16, borderRadius:4, background: on ? accent : '#fff', border:`1.5px solid ${on ? accent : '#cbd5e1'}` }}/>;
+    return (
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 16px)', gridTemplateRows:'repeat(3, 16px)', gap:3 }}>
+        {cell(2, 1, dir === 'up', 'u')}
+        {cell(1, 2, dir === 'left', 'l')}
+        <div key="c" style={{ gridColumn:2, gridRow:2, width:16, height:16, borderRadius:'50%', background:'#eef2f7', border:'1.5px solid #cbd5e1' }}/>
+        {cell(3, 2, dir === 'right', 'r')}
+        {cell(2, 3, dir === 'down', 'd')}
+      </div>
+    );
+  };
+
+  // Patient view + doctor frontier chart for the MPMVA stages (client-approved v3 split)
+  const WFR_WalkChart = () => {
+    const eye = subjEye;
+    const curLine = WFR_VA_LINES.find(l => l.n === pos) || WFR_VA_LINES[0];
+    const cnt = curLine.letters.length;
+    const lineDone = WFR_lineComplete(eye, pos);
+    const activeRot = optoRot[`${eye}_${pos}_${charPtr}`] || 0;
+    const patientNote = WFR_isOpto ? (lineDone ? 'Line complete' : `Patient indicates orientation on the 4-way clicker · character ${charPtr + 1} of ${cnt}`) : 'Patient reads this line aloud · doctor scores';
+    const stepBtn = (disabled) => ({ width:36, height:36, borderRadius:8, border:`1.5px solid ${WFR_C.border}`, background:'#fff', cursor: disabled?'default':'pointer', color: disabled?'#d1d5db':WFR_C.text2, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 });
+    return (
+      <div style={{ display:'flex', flex:1, minHeight:0, background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', overflow:'hidden' }}>
+        {/* PATIENT VIEW — what the patient sees through the headset */}
+        <div style={{ flex:1, display:'flex', flexDirection:'column', borderRight:'1px solid #e5e7eb' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 20px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ width:7, height:7, borderRadius:'50%', background:accent, boxShadow:`0 0 8px ${accent}` }}/>
+              <span style={WFR_VIOLATOR}>Patient view · headset</span>
+            </div>
+            <span style={{ ...WFR_VIOLATOR, color:'#cbd5e1' }}>{eye} · 20 ft</span>
+          </div>
+          <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 24px' }}>
+            {WFR_isOpto
+              ? <WFR_Optotype kind={WFR_optoKind} size={Math.min(curLine.fs * 1.4, 230)} rotation={activeRot} color={WFR_C.text}/>
+              : <div style={{ display:'flex', gap:Math.max(curLine.fs * 0.4, 14), alignItems:'center' }}>{curLine.letters.map((ltr, i) => <span key={i} style={{ fontSize:Math.min(curLine.fs, Math.floor(560 / cnt)), fontWeight:700, color:WFR_C.text, lineHeight:1 }}>{ltr}</span>)}</div>}
+          </div>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12, padding:'0 20px 22px' }}>
+            {WFR_isOpto && !lineDone && <WFR_ClickerGlyph dir={WFR_rotToDir(activeRot)}/>}
+            <div style={{ fontSize:11, color:WFR_C.muted }}>{patientNote}</div>
+          </div>
+        </div>
+        {/* DOCTOR CONTROL — the full chart */}
+        <div style={{ flex:1.05, display:'flex', flexDirection:'column', minHeight:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 18px', borderBottom:'1px solid #e5e7eb' }}>
+            <div>
+              <div style={WFR_VIOLATOR}>Doctor control</div>
+              <div style={{ fontSize:14, fontWeight:700, color:WFR_C.text, marginTop:3 }}>{optotype === 'letters' ? 'Snellen' : optotype === 'tumblingC' ? 'Landolt C' : 'Tumbling E'} · {eye}</div>
+            </div>
+            <div style={{ flex:1 }}/>
+            <span style={{ fontSize:10, fontWeight:700, color:WFR_C.muted, textTransform:'uppercase', letterSpacing:'0.06em' }}>Line</span>
+            <button onClick={() => WFR_goToLine(pos - 1)} disabled={pos <= 1} title="Larger (toward 20/200)" style={stepBtn(pos <= 1)}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6"/></svg></button>
+            <div style={{ minWidth:58, textAlign:'center', fontSize:14, fontWeight:700, color:accent, fontVariantNumeric:'tabular-nums' }}>{curLine.va}</div>
+            <button onClick={() => WFR_goToLine(pos + 1)} disabled={pos >= 10} title="Smaller (toward 20/10)" style={stepBtn(pos >= 10)}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+          </div>
+          <div style={{ flex:1, overflowY:'auto', padding:'8px 18px', display:'flex', flexDirection:'column', justifyContent:'flex-start', gap:2 }}>
+          {WFR_VA_LINES.map(line => {
+            const marks = getLine(eye, line.n);
+            const st = WFR_rowState(eye, line.n);
+            const current = st === 'active', completed = st === 'completed', locked = st === 'locked';
+            const correct = marks.filter(m => m === 'correct').length;
+            const total = line.letters.length;
+            const pct = total ? Math.round(correct / total * 100) : 0;
+            const hasAny = marks.some(m => m != null);
+            const dispSize = Math.max(12, Math.min(27, Math.round(line.fs * 0.3)));
+            return (
+              <div key={line.n} onClick={() => WFR_goToLine(line.n)} title={locked ? 'Ahead of progress — tap to override (recorded)' : completed ? 'Completed — tap to re-check' : undefined}
+                style={{ display:'grid', gridTemplateColumns:'46px 1fr 52px', alignItems:'center', gap:10, padding:'1px 8px', borderRadius:9, cursor:'pointer', border: current ? `2px solid ${accent}` : '2px solid transparent', background: current ? `${accent}0c` : completed ? '#f8fafc' : 'transparent' }}>
+                <div style={{ fontSize:11, fontWeight:700, color: current ? accent : WFR_C.muted, textAlign:'right', fontVariantNumeric:'tabular-nums', opacity: locked ? 0.45 : completed ? 0.7 : 1 }}>{line.va}</div>
+                <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:Math.max(dispSize * 0.38, 8) }}>
+                  {line.letters.map((ltr, idx) => {
+                    const res = marks[idx];
+                    const col = res === 'correct' ? WFR_C.success : res === 'incorrect' ? WFR_C.error : (locked ? '#c7ccd4' : WFR_C.text);
+                    const cDisabled = current && !WFR_charUnlocked(eye, line.n, idx);
+                    const isCur = WFR_isOpto && current && idx === charPtr && !lineDone && !cDisabled;
+                    const op = cDisabled ? 0.22 : completed ? 0.5 : locked ? 0.5 : 1;
+                    return (
+                      <button key={idx} onClick={(e) => { e.stopPropagation(); WFR_onCharClick(eye, line.n, idx); }} disabled={cDisabled}
+                        style={{ background: isCur ? '#eef2f7' : 'none', cursor: cDisabled ? 'not-allowed' : 'pointer', padding:2, border: isCur ? '2px solid #9ca3af' : '2px solid transparent', borderRadius:8, minWidth:22, minHeight:22, display:'inline-flex', alignItems:'center', justifyContent:'center', fontFamily:WFR_FONT, lineHeight:1, opacity:op }}>
+                        {WFR_isOpto
+                          ? <WFR_Optotype kind={WFR_optoKind} size={dispSize} rotation={optoRot[`${eye}_${line.n}_${idx}`] || 0} color={col}/>
+                          : <span style={{ fontSize:dispSize, fontWeight:700, color:col, textDecoration: res === 'incorrect' ? 'line-through' : 'none', textDecorationThickness:3 }}>{ltr}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  {hasAny ? <span style={{ fontSize:11, fontWeight:700, color:WFR_C.text2, fontVariantNumeric:'tabular-nums', opacity: completed ? 0.7 : 1 }}>{pct}%</span>
+                    : locked ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c7ccd4" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    : <span style={{ fontSize:10, color:WFR_C.muted }}>—</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 18px', borderTop:'1px solid #e5e7eb', background:WFR_C.surface, flexWrap:'wrap' }}>
+          <div style={{ display:'flex', alignItems:'baseline', gap:6, minWidth:118 }}>
+            <span style={{ fontSize:11, color:WFR_C.muted, whiteSpace:'nowrap' }}>Best VA · {eye}</span>
+            <span style={{ fontSize:18, fontWeight:700, color: fmtBestVA(eye) === '—' ? WFR_C.muted : WFR_C.navy, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>{fmtBestVA(eye)}</span>
+          </div>
+          {chartOverrides.length > 0 && (
+            <div style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:8, background:`${WFR_C.amber}14`, border:`1.5px solid ${WFR_C.amber}55` }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={WFR_C.amber} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span style={{ fontSize:11, fontWeight:700, color:WFR_C.amber }}>{chartOverrides.length} override{chartOverrides.length > 1 ? 's' : ''}</span>
+            </div>
+          )}
+          {chartEdits.length > 0 && (
+            <div style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:8, background:`${WFR_C.navy}0d`, border:`1.5px solid ${WFR_C.navy}33` }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={WFR_C.navy} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <span style={{ fontSize:11, fontWeight:700, color:WFR_C.navy }}>{chartEdits.length} answer edit{chartEdits.length > 1 ? 's' : ''}</span>
+            </div>
+          )}
+          <div style={{ flex:1 }}/>
+          {!lineDone && (
+            <button onClick={WFR_endHere} title="Patient can't read further — mark remaining letters incorrect and set the endpoint" style={{ minHeight:38, padding:'8px 12px', borderRadius:9, border:`1.5px solid ${WFR_C.border}`, background:'#fff', color:WFR_C.text2, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:WFR_FONT, display:'flex', alignItems:'center', gap:7 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              Can't read
+            </button>
+          )}
+          {WFR_hasMark(eye, pos) && (
+            <button onClick={WFR_clearLine} title="Clear this line's marks" style={{ minHeight:38, padding:'8px 12px', borderRadius:9, border:`1.5px solid ${WFR_C.border}`, background:'#fff', color:WFR_C.text2, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:WFR_FONT, display:'flex', alignItems:'center', gap:7 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+              Clear line
+            </button>
+          )}
+        </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Override + back-edit confirm modals and the audit toast (fixed overlays)
+  const WFR_chartModals = () => (
+    <>
+      {chartToast && (
+        <div style={{ position:'fixed', bottom:90, left:'50%', transform:'translateX(-50%)', background:WFR_C.navy, color:'#fff', padding:'10px 18px', borderRadius:10, fontSize:12, fontWeight:700, fontFamily:WFR_FONT, boxShadow:'0 8px 24px rgba(15,23,42,0.28)', zIndex:1200, display:'flex', alignItems:'center', gap:9 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>{chartToast}
+        </div>
+      )}
+      {pendingOverride != null && (() => { const t = WFR_VA_LINES.find(l => l.n === pendingOverride) || {}; const cur = WFR_VA_LINES.find(l => l.n === pos) || {}; return (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1300 }} onClick={() => setPendingOverride(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ width:440, background:'#fff', borderRadius:16, padding:'26px 28px', boxShadow:'0 24px 60px rgba(15,23,42,0.32)', fontFamily:WFR_FONT }}>
+            <div style={{ display:'flex', alignItems:'center', gap:11, marginBottom:14 }}>
+              <div style={{ width:38, height:38, borderRadius:10, background:`${WFR_C.amber}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={WFR_C.amber} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+              <h3 style={{ fontSize:17, fontWeight:700, color:WFR_C.navy, margin:0 }}>Skip ahead to {t.va}?</h3>
+            </div>
+            <p style={{ fontSize:13, color:WFR_C.text2, lineHeight:1.6, margin:'0 0 20px' }}>This jumps past the patient's current line ({cur.va}), ahead of natural progression. Lines in between stay open and unscored. <strong style={{ color:WFR_C.text }}>The override will be recorded in the session log.</strong></p>
+            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+              <button autoFocus onClick={() => setPendingOverride(null)} style={secondaryBtn}>Cancel</button>
+              <button onClick={() => { WFR_doOverride(pendingOverride); setPendingOverride(null); }} style={{ ...primaryBtn, background:WFR_C.amber }}>Override &amp; jump</button>
+            </div>
+          </div>
+        </div>
+      ); })()}
+      {pendingEdit && (() => { const ev = WFR_VA_LINES.find(l => l.n === pendingEdit.n) || {}; return (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1300 }} onClick={() => setPendingEdit(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ width:440, background:'#fff', borderRadius:16, padding:'26px 28px', boxShadow:'0 24px 60px rgba(15,23,42,0.32)', fontFamily:WFR_FONT }}>
+            <div style={{ display:'flex', alignItems:'center', gap:11, marginBottom:14 }}>
+              <div style={{ width:38, height:38, borderRadius:10, background:`${accent}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+              <h3 style={{ fontSize:17, fontWeight:700, color:WFR_C.navy, margin:0 }}>Change a recorded answer?</h3>
+            </div>
+            <p style={{ fontSize:13, color:WFR_C.text2, lineHeight:1.6, margin:'0 0 20px' }}>Line {ev.va} was already completed. Editing letter {pendingEdit.idx + 1} changes a recorded result. <strong style={{ color:WFR_C.text }}>The change will be saved to the answer-edit log.</strong></p>
+            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+              <button autoFocus onClick={() => setPendingEdit(null)} style={secondaryBtn}>Cancel</button>
+              <button onClick={() => { WFR_applyEdit(pendingEdit); setPendingEdit(null); }} style={primaryBtn}>Change answer</button>
+            </div>
+          </div>
+        </div>
+      ); })()}
+    </>
+  );
+
   const StepIndicator = () => {
     const order = ['sphere', 'jcc-axis', 'jcc-power', 'add'];
     const curIdx = subjStep === 'setup' ? -1 : subjStep === 'mpmva2' ? 2 : order.indexOf(subjStep);
@@ -957,8 +1364,8 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
     const r = subjRx[subjEye];
     const jccTarget = subjStep === 'jcc-axis' || subjStep === 'jcc-power';
     return (
-      <div style={{ padding:24, minHeight:'100%' }}>
-        <div style={{ maxWidth:880, margin:'0 auto', display:'flex', flexDirection:'column', gap:14 }}>
+      <div style={{ padding:'14px 24px', height:'100%', boxSizing:'border-box', overflowY:'auto' }}>
+        <div style={{ maxWidth:(subjStep === 'sphere' || subjStep === 'mpmva2') ? 1180 : 880, margin:'0 auto', display:'flex', flexDirection:'column', gap:12, height:'100%', boxSizing:'border-box' }}>
           {/* Sub-bar: eye toggle + step indicator */}
           <div style={{ background:'#fff', borderRadius:12, border:'1.5px solid #e5e7eb', padding:'12px 18px', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
             <div style={{ display:'flex', background:'#f3f4f6', borderRadius:20, padding:3, gap:2 }}>
@@ -970,6 +1377,7 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
             </div>
             <div style={{ flex:1, display:'flex', justifyContent:'flex-end' }}><StepIndicator/></div>
           </div>
+          {WFR_chartModals()}
 
           {/* SETUP — corrected/uncorrected */}
           {subjStep === 'setup' && (
@@ -1034,55 +1442,77 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
           {/* SPHERE (MPMVA) and second MPMVA */}
           {(subjStep === 'sphere' || subjStep === 'mpmva2') && (
             <>
-              <VAChart eye={subjEye}/>
-              <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'20px 24px', display:'flex', flexDirection:'column', gap:16 }}>
-                <div style={{ fontSize:15, fontWeight:700, color:'#111827' }}>
-                  {subjStep === 'mpmva2' ? 'Second MPMVA — cylinder has changed, re-establishing sphere endpoint' : 'Maximum plus to maximum visual acuity (MPMVA)'}
+              {WFR_WalkChart()}
+              <div style={{ background:'#fff', borderRadius:12, border:'1.5px solid #e5e7eb', padding:'12px 18px', display:'flex', alignItems:'center', gap:18, flexWrap:'wrap' }}>
+                <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                  <span style={{ ...WFR_VIOLATOR, fontSize:9 }}>{subjStep === 'mpmva2' ? 'Second MPMVA · sphere' : 'MPMVA · sphere'} ({subjEye})</span>
+                  <Stepper value={r.sph} field="sph" step={0.25} onAdjust={adjustSubj} eye={subjEye} fmt={WFR_fmtSph}/>
                 </div>
-                <div style={{ display:'flex', alignItems:'center', gap:24, flexWrap:'wrap' }}>
-                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                    <span style={{ ...WFR_VIOLATOR, fontSize:9 }}>Sphere ({subjEye})</span>
-                    <Stepper value={r.sph} field="sph" step={0.25} onAdjust={adjustSubj} eye={subjEye} fmt={WFR_fmtSph}/>
-                  </div>
-                  {fogAmount > 0 && subjStep === 'sphere' && (
-                    <div style={{ fontSize:11, fontWeight:600, color:accent, background:`${accent}12`, padding:'8px 12px', borderRadius:8 }}>Fog applied: +{fogAmount.toFixed(2)} D above objective</div>
-                  )}
-                </div>
-                <ClinicalNote>
+                {fogAmount > 0 && subjStep === 'sphere' && (
+                  <div style={{ fontSize:11, fontWeight:600, color:accent, background:`${accent}12`, padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap' }}>Fog +{fogAmount.toFixed(2)} D</div>
+                )}
+                <div style={{ flex:1, minWidth:200, fontSize:11, color:WFR_C.muted, lineHeight:1.45 }}>
                   {subjStep === 'mpmva2'
-                    ? 'Add +0.50 D to fog, then reduce sphere in 0.25 D steps to maximum plus that still gives best VA.'
-                    : 'Reduce sphere in 0.25 D steps until the patient achieves best VA. Stop at the maximum plus that gives best acuity (do not over-minus).'}
-                </ClinicalNote>
-                <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                  <button onClick={advanceSubjStep} style={primaryBtn}>{subjStep === 'mpmva2' ? 'Sphere endpoint confirmed →' : 'MPMVA achieved →'}</button>
+                    ? 'Add +0.50 D fog, then reduce in 0.25 D steps to the best-VA sphere endpoint.'
+                    : 'Reduce sphere in 0.25 D steps to the maximum plus that gives best VA — do not over-minus.'}
                 </div>
+                <button onClick={advanceSubjStep} style={{ ...primaryBtn, minHeight:44, padding:'11px 22px' }}>{subjStep === 'mpmva2' ? 'Sphere endpoint confirmed →' : 'MPMVA achieved →'}</button>
               </div>
             </>
           )}
 
           {/* JCC axis / power */}
-          {jccTarget && (
-            <>
-              <VAChart eye={subjEye} highlightLines={[6, 7, 8]}/>
-              <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'20px 24px', display:'flex', flexDirection:'column', gap:18 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-                  <div style={{ fontSize:15, fontWeight:700, color:'#111827' }}>
-                    {subjStep === 'jcc-axis' ? 'Jackson cross-cylinder — axis refinement' : 'Jackson cross-cylinder — power refinement'}
+          {jccTarget && (() => {
+            // JCC fixates on a SINGLE line one larger than best VA (not the full chart).
+            const bestVa = getBestVA(subjEye).va;
+            const bestN = (WFR_VA_LINES.find(l => l.va === bestVa) || {}).n;
+            const fixN = bestN ? Math.max(1, bestN - 1) : 5;
+            const fixLine = WFR_VA_LINES.find(l => l.n === fixN) || WFR_VA_LINES[4];
+            const fixCnt = fixLine.letters.length;
+            // #5 Smart-Cylinder bracketing — working step auto-sizes to |cyl|
+            // and shrinks one ladder rung per recorded reversal.
+            const cylMag = Math.abs(r.cyl);
+            const smartPwrStep = WFR_powerStepFor(cylMag, jccReversals);
+            const smartAxisStep = WFR_axisStepFor(cylMag, jccReversals);
+            const workingStep = subjStep === 'jcc-axis' ? `±${smartAxisStep}°` : `±${smartPwrStep.toFixed(2)} D`;
+            const ladder = subjStep === 'jcc-axis' ? WFR_AXIS_LADDER.map(v => `${v}°`) : WFR_PWR_LADDER.map(v => v.toFixed(2));
+            const rungIdx = subjStep === 'jcc-axis' ? WFR_AXIS_LADDER.indexOf(smartAxisStep) : WFR_PWR_LADDER.indexOf(smartPwrStep);
+            return (
+            <div style={{ flex:1, minHeight:0, display:'flex', gap:14 }}>
+              {/* Patient fixation target — single line, the two flips compared against it */}
+              <div style={{ flex:1, background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 20px' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ width:7, height:7, borderRadius:'50%', background:accent, boxShadow:`0 0 8px ${accent}` }}/>
+                    <span style={WFR_VIOLATOR}>Patient view · headset</span>
                   </div>
-                  <div style={{ flex:1 }}/>
-                  {subjStep === 'jcc-axis' && (
-                    <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', background:'#f3f4f6', padding:'4px 10px', borderRadius:14, textTransform:'uppercase', letterSpacing:'0.05em' }}>Axis before power</div>
-                  )}
+                  <span style={{ ...WFR_VIOLATOR, color:'#cbd5e1' }}>Fixation · {fixLine.va}</span>
                 </div>
-
-                <div style={{ display:'flex', gap:24, flexWrap:'wrap', alignItems:'flex-start' }}>
-                  {/* JCC diagram */}
+                <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 24px' }}>
+                  {WFR_isOpto
+                    ? <div style={{ display:'flex', gap:Math.max(fixLine.fs * 0.5, 18) }}>{fixLine.letters.map((_, i) => <WFR_Optotype key={i} kind={WFR_optoKind} size={Math.min(fixLine.fs, 92)} rotation={optoRot[`${subjEye}_${fixLine.n}_${i}`] || 0} color={WFR_C.text}/>)}</div>
+                    : <div style={{ display:'flex', gap:Math.max(fixLine.fs * 0.45, 18) }}>{fixLine.letters.map((ltr, i) => <span key={i} style={{ fontSize:Math.min(fixLine.fs, Math.floor(540 / fixCnt)), fontWeight:700, color:WFR_C.text, lineHeight:1 }}>{ltr}</span>)}</div>}
+                </div>
+                <div style={{ padding:'0 20px 18px', textAlign:'center' }}>
+                  <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 18px', borderRadius:20, background:`${accent}12`, border:`1.5px solid ${accent}` }}>
+                    <span style={{ fontSize:13, fontWeight:700, color:accent }}>Showing choice {jccFlip}</span>
+                  </div>
+                  <div style={{ fontSize:11, color:WFR_C.muted, marginTop:10 }}>Patient compares the two flips — "which is clearer, 1 or 2?"</div>
+                </div>
+              </div>
+              {/* JCC controls */}
+              <div style={{ flex:1, background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'16px 20px', display:'flex', flexDirection:'column', gap:14, overflowY:'auto' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                  <div style={{ fontSize:15, fontWeight:700, color:'#111827' }}>{subjStep === 'jcc-axis' ? 'JCC — axis refinement' : 'JCC — power refinement'}</div>
+                  <div style={{ flex:1 }}/>
+                  {subjStep === 'jcc-axis' && <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', background:'#f3f4f6', padding:'4px 10px', borderRadius:14, textTransform:'uppercase', letterSpacing:'0.05em' }}>Axis before power</div>}
+                </div>
+                <div style={{ display:'flex', gap:20, alignItems:'flex-start', flexWrap:'wrap' }}>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8 }}>
-                    <svg width="120" height="120" viewBox="0 0 120 120">
+                    <svg width="104" height="104" viewBox="0 0 120 120">
                       <circle cx="60" cy="60" r="50" fill="#f9fafb" stroke="#e5e7eb" strokeWidth="2"/>
                       {(() => {
                         const ax = r.axis * Math.PI / 180;
-                        // red = cylinder axis dot, white = 90° away; flip swaps
                         const redA = jccFlip === 1 ? ax : ax + Math.PI/2;
                         const whiteA = redA + Math.PI/2;
                         const pt = (a, rad) => [60 + Math.cos(a)*rad, 60 - Math.sin(a)*rad];
@@ -1100,42 +1530,85 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
                         );
                       })()}
                     </svg>
-                    <div style={{ fontSize:10, color:'#6b7280', textAlign:'center', maxWidth:140 }}>Red = cylinder axis · White = 90° away</div>
                     <button onClick={() => { setJccFlip(f => f === 1 ? 2 : 1); setComparisons(c => c + 1); }} style={{ ...secondaryBtn, minHeight:40, padding:'8px 18px' }}>Flip JCC (choice {jccFlip})</button>
-                    <div style={{ fontSize:11, color: comparisons >= 3 ? WFR_C.amber : '#9ca3af', fontWeight:600 }}>Comparisons: {comparisons}{comparisons >= 3 ? ' · advisory (≈3 typical)' : ''}</div>
+                    <div style={{ fontSize:11, color: comparisons >= 3 ? WFR_C.amber : '#9ca3af', fontWeight:600 }}>Comparisons: {comparisons}{comparisons >= 3 ? ' · ≈3 typical' : ''}</div>
                   </div>
-
-                  {/* JCC controls */}
-                  <div style={{ flex:1, minWidth:280, display:'flex', flexDirection:'column', gap:16 }}>
-                    <div>
-                      <span style={{ ...WFR_VIOLATOR, fontSize:9 }}>JCC power</span>
-                      <div style={{ display:'flex', gap:8, marginTop:8 }}>
-                        {[0.25, 0.50, 0.75, 1.00].map(p => (
-                          <button key={p} onClick={() => setJccPower(p)} style={{ flex:1, minHeight:44, borderRadius:9, border:`1.5px solid ${jccPower===p ? accent : '#e5e7eb'}`, background: jccPower===p ? accent : '#fff', color: jccPower===p ? '#fff' : '#374151', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:WFR_FONT, fontVariantNumeric:'tabular-nums' }}>{p.toFixed(2)}</button>
-                        ))}
+                  <div style={{ flex:1, minWidth:240, display:'flex', flexDirection:'column', gap:14 }}>
+                    {/* #5 Smart-Cylinder bracketing */}
+                    <div style={{ background: smartBracket ? `${accent}0a` : '#f9fafb', border:`1.5px solid ${smartBracket ? accent+'44' : '#e5e7eb'}`, borderRadius:11, padding:'12px 14px' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                        <span style={{ ...WFR_VIOLATOR, fontSize:9, color: smartBracket ? accent : WFR_C.muted }}>Smart-Cylinder bracketing</span>
+                        <div style={{ flex:1 }}/>
+                        <button onClick={() => setSmartBracket(v => !v)} title="Toggle auto-bracketing"
+                          style={{ width:38, height:22, borderRadius:11, border:'none', cursor:'pointer', background: smartBracket ? accent : '#cbd5e1', position:'relative', flexShrink:0, transition:'background 0.15s' }}>
+                          <span style={{ position:'absolute', top:2, left: smartBracket ? 18 : 2, width:18, height:18, borderRadius:'50%', background:'#fff', transition:'left 0.15s', boxShadow:'0 1px 2px rgba(0,0,0,0.2)' }}/>
+                        </button>
                       </div>
-                      <div style={{ fontSize:10, color:'#9ca3af', marginTop:6 }}>0.50 D default (≤2.00 D cyl) · 1.00 D for &gt;2.00 D cyl</div>
+                      {smartBracket ? (
+                        <>
+                          <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:10 }}>
+                            <div>
+                              <div style={{ fontSize:9, color:WFR_C.muted, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em' }}>Working step</div>
+                              <div style={{ fontSize:24, fontWeight:700, color:accent, fontVariantNumeric:'tabular-nums', lineHeight:1.1 }}>{workingStep}</div>
+                            </div>
+                            <div style={{ flex:1 }}/>
+                            <div style={{ textAlign:'right' }}>
+                              <div style={{ fontSize:9, color:WFR_C.muted, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em' }}>Reversals</div>
+                              <div style={{ fontSize:24, fontWeight:700, color:WFR_C.navy, fontVariantNumeric:'tabular-nums', lineHeight:1.1 }}>{jccReversals}</div>
+                            </div>
+                          </div>
+                          {/* ladder */}
+                          <div style={{ display:'flex', gap:4, marginBottom:8 }}>
+                            {ladder.map((lab, i) => (
+                              <div key={lab} style={{ flex:1, textAlign:'center', padding:'5px 0', borderRadius:7, fontSize:11, fontWeight:700, fontVariantNumeric:'tabular-nums',
+                                background: i === rungIdx ? accent : i < rungIdx ? '#f0fdf4' : '#fff',
+                                color: i === rungIdx ? '#fff' : i < rungIdx ? '#9ca3af' : WFR_C.text2,
+                                border:`1.5px solid ${i === rungIdx ? accent : i < rungIdx ? '#bbf7d0' : '#e5e7eb'}`, textDecoration: i < rungIdx ? 'line-through' : 'none' }}>{lab}</div>
+                            ))}
+                          </div>
+                          <button onClick={() => { setJccReversals(n => n + 1); setComparisons(c => c + 1); }}
+                            disabled={rungIdx >= ladder.length - 1}
+                            style={{ width:'100%', minHeight:38, borderRadius:9, border:`1.5px solid ${rungIdx >= ladder.length - 1 ? '#e5e7eb' : accent}`, background: rungIdx >= ladder.length - 1 ? '#f3f4f6' : `${accent}12`, color: rungIdx >= ladder.length - 1 ? '#9ca3af' : accent, fontSize:12, fontWeight:700, cursor: rungIdx >= ladder.length - 1 ? 'default' : 'pointer', fontFamily:WFR_FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
+                            {rungIdx >= ladder.length - 1
+                              ? 'Finest bracket reached'
+                              : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M7 13l5 5 5-5M7 6l5 5 5-5"/></svg>Reversal reached · narrow bracket</>}
+                          </button>
+                          <div style={{ fontSize:10, color:WFR_C.muted, marginTop:7, lineHeight:1.4 }}>Step auto-set from cylinder magnitude ({WFR_fmtCyl(r.cyl)} D); narrows one rung each time the patient reverses preference.</div>
+                        </>
+                      ) : (
+                        <div>
+                          <div style={{ fontSize:11, color:WFR_C.muted, marginBottom:8 }}>Manual JCC cross-cylinder power</div>
+                          <div style={{ display:'flex', gap:8 }}>
+                            {[0.25, 0.50, 0.75, 1.00].map(p => (
+                              <button key={p} onClick={() => setJccPower(p)} style={{ flex:1, minHeight:42, borderRadius:9, border:`1.5px solid ${jccPower===p ? accent : '#e5e7eb'}`, background: jccPower===p ? accent : '#fff', color: jccPower===p ? '#fff' : '#374151', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:WFR_FONT, fontVariantNumeric:'tabular-nums' }}>{p.toFixed(2)}</button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                      <span style={{ ...WFR_VIOLATOR, fontSize:9 }}>{subjStep === 'jcc-axis' ? `Axis (${subjEye})` : `Cylinder (${subjEye})`}</span>
+                      <span style={{ ...WFR_VIOLATOR, fontSize:9 }}>{subjStep === 'jcc-axis' ? `Axis (${subjEye})` : `Cylinder (${subjEye})`}{smartBracket ? ` · ${workingStep}` : ''}</span>
                       {subjStep === 'jcc-axis'
-                        ? <AxisStepper value={r.axis} eye={subjEye}/>
-                        : <Stepper value={r.cyl} field="cyl" step={0.25} onAdjust={adjustSubj} eye={subjEye} fmt={WFR_fmtCyl}/>}
+                        ? (smartBracket
+                            ? <Stepper value={r.axis} field="axis" step={smartAxisStep} onAdjust={adjustSubj} eye={subjEye} fmt={WFR_fmtAxis}/>
+                            : <AxisStepper value={r.axis} eye={subjEye}/>)
+                        : <Stepper value={r.cyl} field="cyl" step={smartBracket ? smartPwrStep : 0.25} onAdjust={adjustSubj} eye={subjEye} fmt={WFR_fmtCyl}/>}
                     </div>
                   </div>
                 </div>
-
-                <ClinicalNote>
+                <div style={{ fontSize:11, color:WFR_C.muted, lineHeight:1.45 }}>
                   {subjStep === 'jcc-axis'
-                    ? 'Flip the JCC. Ask: "Which is clearer — choice 1 or 2?" Move the axis toward the same-sign cylinder dot. Reduce step after each reversal: 15° → 10° → 5° → 3° → 1°.'
-                    : 'Flip the JCC with the handle along the confirmed axis. Add minus cylinder when the patient prefers the minus position. For each −0.50 D CYL added, add +0.25 D SPH to maintain the circle of least confusion.'}
-                </ClinicalNote>
+                    ? 'Flip the JCC; ask "clearer — 1 or 2?" Move axis toward the same-sign dot. Reduce step after each reversal: 15° → 10° → 5° → 3° → 1°.'
+                    : 'Flip with the handle along the axis. Add minus cylinder when the patient prefers the minus; add +0.25 D SPH per −0.50 D CYL.'}
+                </div>
+                <div style={{ flex:1 }}/>
                 <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                  <button onClick={advanceSubjStep} style={primaryBtn}>{subjStep === 'jcc-axis' ? 'Axis confirmed →' : 'Power confirmed →'}</button>
+                  <button onClick={advanceSubjStep} style={{ ...primaryBtn, minHeight:44, padding:'11px 22px' }}>{subjStep === 'jcc-axis' ? 'Axis confirmed →' : 'Power confirmed →'}</button>
                 </div>
               </div>
-            </>
-          )}
+            </div>
+            );
+          })()}
 
           {/* NEAR ADDITION */}
           {subjStep === 'add' && (
@@ -1162,6 +1635,65 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
               </div>
             </div>
           )}
+
+          {/* #2 BINOCULAR BALANCE — fogging / alternate occlusion (no prism, Q10) */}
+          {subjStep === 'binocular' && (() => {
+            const sphDiff = subjRx.OD.sph - subjRx.OS.sph;
+            const balanced = Math.abs(sphDiff) < 0.001;
+            return (
+              <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'24px 26px', display:'flex', flexDirection:'column', gap:18 }}>
+                <div style={{ display:'flex', alignItems:'flex-start', gap:14 }}>
+                  <div style={{ width:46, height:46, borderRadius:11, background:`${accent}15`, display:'flex', alignItems:'center', justifyContent:'center', color:accent, flexShrink:0 }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:17, fontWeight:700, color:'#111827' }}>Binocular balance</div>
+                    <div style={{ fontSize:12, color:'#6b7280', lineHeight:1.55, marginTop:3 }}>Equalize accommodation between the two eyes by fogging both, then alternately occluding. The clearer eye is balanced toward the other in +0.25 D steps until blur is equal. No prism is introduced — dissociation is by occlusion (per headset optics).</div>
+                  </div>
+                </div>
+
+                <div style={{ display:'flex', gap:16, flexWrap:'wrap' }}>
+                  {/* Alternate occlusion control */}
+                  <div style={{ flex:1, minWidth:260, background:'#f9fafb', borderRadius:12, border:'1px solid #e5e7eb', padding:'16px 18px' }}>
+                    <div style={{ ...WFR_VIOLATOR, fontSize:9, marginBottom:12 }}>Alternate occlusion</div>
+                    <div style={{ display:'flex', background:'#fff', borderRadius:10, padding:4, gap:4, border:'1px solid #e5e7eb' }}>
+                      {[['OD','Right open'], ['both','Both open'], ['OS','Left open']].map(([v,l]) => (
+                        <button key={v} onClick={() => setBinocOcclude(v)} style={{ flex:1, minHeight:42, borderRadius:7, border:'none', cursor:'pointer', background: binocOcclude===v ? accent : 'transparent', color: binocOcclude===v ? '#fff' : '#6b7280', fontSize:12, fontWeight:700, fontFamily:WFR_FONT }}>{l}</button>
+                      ))}
+                    </div>
+                    <label style={{ display:'flex', alignItems:'center', gap:10, marginTop:14, cursor:'pointer' }}>
+                      <button onClick={() => setBinocFog(v => !v)} style={{ width:38, height:22, borderRadius:11, border:'none', cursor:'pointer', background: binocFog ? accent : '#cbd5e1', position:'relative', flexShrink:0 }}>
+                        <span style={{ position:'absolute', top:2, left: binocFog ? 18 : 2, width:18, height:18, borderRadius:'50%', background:'#fff', transition:'left 0.15s' }}/>
+                      </button>
+                      <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Fog both eyes +0.75 D</span>
+                    </label>
+                    <div style={{ fontSize:11, color:WFR_C.muted, marginTop:10, lineHeight:1.45 }}>Ask the patient which eye's chart is clearer, or whether they appear equal.</div>
+                  </div>
+
+                  {/* Balance steppers */}
+                  <div style={{ flex:1, minWidth:260, background:'#f9fafb', borderRadius:12, border:'1px solid #e5e7eb', padding:'16px 18px' }}>
+                    <div style={{ ...WFR_VIOLATOR, fontSize:9, marginBottom:12 }}>Sphere balance</div>
+                    {objSequence.map(e => (
+                      <div key={e} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12, opacity: binocOcclude==='both' || binocOcclude===e ? 1 : 0.4 }}>
+                        <span style={{ fontSize:12, fontWeight:700, color: e===subjEye?accent:'#374151', width:34 }}>{e}</span>
+                        <Stepper value={subjRx[e].sph} field="sph" step={0.25} onAdjust={(eye,f,d) => nudgeBalance(eye,d)} eye={e} fmt={WFR_fmtSph}/>
+                      </div>
+                    ))}
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 12px', borderRadius:9, background: balanced ? '#f0fdf4' : `${WFR_C.amber}12`, border:`1px solid ${balanced ? '#bbf7d0' : WFR_C.amber+'55'}`, marginTop:4 }}>
+                      <span style={{ fontSize:11, fontWeight:700, color: balanced ? '#047857' : WFR_C.amber }}>OD − OS sphere</span>
+                      <span style={{ fontSize:14, fontWeight:700, color: balanced ? '#047857' : WFR_C.amber, fontVariantNumeric:'tabular-nums' }}>{balanced ? 'Balanced' : `${sphDiff > 0 ? '+' : ''}${sphDiff.toFixed(2)} D`}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <ClinicalNote>Balance does not change the cylinder or axis — only the sphere is equalized. Skip for strongly anisometropic patients where equal blur is not expected.</ClinicalNote>
+                <div style={{ display:'flex', justifyContent:'flex-end', gap:12 }}>
+                  <button onClick={completeBinocular} style={secondaryBtn}>Skip balance</button>
+                  <button onClick={completeBinocular} style={primaryBtn}>Balance confirmed · view report →</button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     );
@@ -1186,6 +1718,312 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
     };
     const bcva = (e) => fmtBestVA(e) === '—' ? '20/20' : fmtBestVA(e); // mock fallback
 
+    // ── Report tab set (wavefront tab only when objective stage ran) ──
+    const reportTabs = [
+      ['summary', 'Summary'],
+      ['comparison', 'Rx comparison'],
+      ['daynight', 'Day & night'],
+      ['simulation', 'Vision simulation'],
+      ...(ranObjective ? [['wavefront', 'Wavefront']] : []),
+      ['progression', 'Progression'],
+    ];
+    const activeTab = reportTabs.some(t => t[0] === reportTab) ? reportTab : 'summary';
+
+    // ════════ #3 MULTI-SOURCE Rx COMPARISON ════════
+    const renderComparison = () => {
+      const srcRow = (label, rx, tone) => (
+        <tr style={{ borderBottom:'1px solid #f3f4f6' }}>
+          <td style={{ padding:'9px 12px', fontSize:12, fontWeight:700, color: tone || WFR_C.text2 }}>{label}</td>
+          <td style={{ padding:'9px 12px', fontSize:12, color:WFR_C.text2, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{rx ? WFR_fmtSph(rx.sph) : '—'}</td>
+          <td style={{ padding:'9px 12px', fontSize:12, color:WFR_C.text2, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{rx ? WFR_fmtCyl(rx.cyl) : '—'}</td>
+          <td style={{ padding:'9px 12px', fontSize:12, color:WFR_C.text2, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{rx ? WFR_fmtAxis(rx.axis) : '—'}</td>
+          <td style={{ padding:'9px 12px', fontSize:12, fontWeight:700, color:WFR_C.navy, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{rx ? WFR_fmtSE(WFR_SE(rx)) : '—'}</td>
+        </tr>
+      );
+      return (
+        <>
+          <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'18px 20px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6, flexWrap:'wrap' }}>
+              <div style={WFR_REPORT_LABEL}>Multi-source comparison</div>
+              <div style={{ flex:1 }}/>
+              <span style={{ fontSize:11, color:WFR_C.muted }}>Spherical equivalent (SE) shown for each source</span>
+            </div>
+            <div style={{ fontSize:12, color:'#6b7280', lineHeight:1.55, marginBottom:16 }}>Objective wavefront, subjective endpoint, the patient's habitual spectacle Rx, and unaided — side by side with deltas. Habitual is entered manually below; it will auto-populate from the cloud patient time-series once history sync is live.</div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+              {objSequence.map(e => {
+                const unaided = { sph:0, cyl:0, axis:0, add:0 };
+                const dHab = WFR_SE(subjRx[e]) - WFR_SE(habitualRx[e]);
+                return (
+                  <div key={e} style={{ border:'1px solid #e5e7eb', borderRadius:12, overflow:'hidden' }}>
+                    <div style={{ background:'#f9fafb', padding:'10px 14px', fontSize:12, fontWeight:700, color:accent, borderBottom:'1px solid #e5e7eb' }}>{WFR_EYE_NAMED[e]}</div>
+                    <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                      <thead><tr style={{ background:'#fff' }}>{['Source','SPH','CYL','AXIS','SE'].map((h,i) => (<th key={h} style={{ fontSize:9, fontWeight:700, color:WFR_C.muted, textAlign: i===0?'left':'right', padding:'6px 12px', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #f3f4f6' }}>{h}</th>))}</tr></thead>
+                      <tbody>
+                        {ranObjective && srcRow('Objective', WFR_OBJ[e])}
+                        {srcRow('Subjective', subjRx[e], accent)}
+                        {srcRow('Habitual', habitualRx[e])}
+                        {srcRow('Unaided', unaided)}
+                      </tbody>
+                    </table>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background: Math.abs(dHab) >= 0.5 ? `${WFR_C.amber}10` : '#f9fafb', borderTop:'1px solid #e5e7eb' }}>
+                      <span style={{ fontSize:11, fontWeight:700, color: Math.abs(dHab) >= 0.5 ? WFR_C.amber : '#6b7280' }}>SE change vs habitual</span>
+                      <span style={{ fontSize:14, fontWeight:700, color: Math.abs(dHab) >= 0.5 ? WFR_C.amber : WFR_C.navy, fontVariantNumeric:'tabular-nums' }}>{WFR_fmtDelta(dHab, 'D')} D</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Habitual Rx manual entry */}
+          <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'18px 20px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, flexWrap:'wrap' }}>
+              <div style={WFR_REPORT_LABEL}>Habitual prescription (current glasses)</div>
+              <span style={{ fontSize:10, fontWeight:700, color:'#6b7280', background:'#f3f4f6', padding:'4px 10px', borderRadius:14, textTransform:'uppercase', letterSpacing:'0.05em' }}>Manual entry</span>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+              {objSequence.map(e => (
+                <div key={e} style={{ background:'#f9fafb', borderRadius:10, border:'1px solid #e5e7eb', padding:'14px 16px' }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:accent, marginBottom:12 }}>{e}</div>
+                  <div style={{ display:'grid', gridTemplateColumns:'auto auto', gap:'12px 20px' }}>
+                    {[['SPH','sph',0.25, WFR_fmtSph], ['CYL','cyl',0.25, WFR_fmtCyl], ['AXIS','axis',1, WFR_fmtAxis], ['ADD','add',0.25, WFR_fmtAdd]].map(([lab, field, step, fmt]) => (
+                      <div key={field} style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                        <span style={{ ...WFR_VIOLATOR, fontSize:9 }}>{lab}</span>
+                        <Stepper value={habitualRx[e][field]} field={field} step={step} onAdjust={adjustHabitual} eye={e} fmt={fmt}/>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize:11, color:WFR_C.muted, marginTop:12, fontStyle:'italic' }}>Auto-pull from the patient's cloud time-series profile is planned (headset Q9 — time-series profile confirmed).</div>
+          </div>
+
+          {ranObjective && (
+            <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'18px 20px' }}>
+              <div style={{ ...WFR_REPORT_LABEL, marginBottom:14 }}>Objective → subjective change</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                {objSequence.map(e => (
+                  <div key={e} style={{ padding:'12px 14px', background:'#f9fafb', borderRadius:10, border:'1px solid #e5e7eb' }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:accent, marginBottom:4 }}>{e}</div>
+                    <div style={{ fontSize:12, color:'#374151', fontWeight:600, fontVariantNumeric:'tabular-nums' }}>{deltaRow(e)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      );
+    };
+
+    // ════════ #4 PHOTOPIC vs MESOPIC (day-vs-night) ════════
+    const renderDayNight = () => {
+      const show6 = WFR_SIXMM_PROVISIONAL;
+      return (
+        <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'18px 20px' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6, flexWrap:'wrap' }}>
+            <div style={WFR_REPORT_LABEL}>Photopic vs. mesopic refraction</div>
+            <div style={{ flex:1 }}/>
+            <span style={{ fontSize:11, color:WFR_C.muted }}>Day (bright / small pupil) vs. night (dim / large pupil)</span>
+          </div>
+          <div style={{ fontSize:12, color:'#6b7280', lineHeight:1.55, marginBottom:16 }}>Wavefront-derived sphere under bright and dim conditions. The mesopic shift quantifies night myopia. Analysis at {WFR_ANALYSIS_DIA.toFixed(1)} mm is confirmed; the 6 mm column is awaiting optical-team confirmation.</div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+            {objSequence.map(e => {
+              const base = subjRx[e].sph;
+              const dn = WFR_DAYNIGHT[e];
+              const rows = [
+                ['Photopic (bright)', base + dn.photo4, base + dn.photo6],
+                ['Mesopic (dim)', base + dn.meso4, base + dn.meso6],
+              ];
+              const diff4 = dn.meso4 - dn.photo4;
+              const diff6 = dn.meso6 - dn.photo6;
+              return (
+                <div key={e} style={{ border:'1px solid #e5e7eb', borderRadius:12, overflow:'hidden' }}>
+                  <div style={{ background:'#f9fafb', padding:'10px 14px', fontSize:12, fontWeight:700, color:accent, borderBottom:'1px solid #e5e7eb' }}>{WFR_EYE_NAMED[e]}</div>
+                  <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                    <thead>
+                      <tr style={{ background:'#fff' }}>
+                        <th style={{ fontSize:9, fontWeight:700, color:WFR_C.muted, textAlign:'left', padding:'8px 12px', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #f3f4f6' }}>Condition</th>
+                        <th style={{ fontSize:9, fontWeight:700, color:WFR_C.text2, textAlign:'right', padding:'8px 12px', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #f3f4f6' }}>{WFR_ANALYSIS_DIA.toFixed(1)} mm</th>
+                        {show6 && <th style={{ fontSize:9, fontWeight:700, color:'#b45309', textAlign:'right', padding:'8px 12px', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #f3f4f6', whiteSpace:'nowrap' }}>6 mm</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map(([lab, v4, v6]) => (
+                        <tr key={lab} style={{ borderBottom:'1px solid #f3f4f6' }}>
+                          <td style={{ padding:'9px 12px', fontSize:12, fontWeight:600, color:WFR_C.text2 }}>{lab}</td>
+                          <td style={{ padding:'9px 12px', fontSize:13, fontWeight:700, color:WFR_C.navy, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{WFR_fmtSph(v4)} D</td>
+                          {show6 && <td style={{ padding:'9px 12px', fontSize:13, fontWeight:700, color:'#92400e', textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{WFR_fmtSph(v6)} D</td>}
+                        </tr>
+                      ))}
+                      <tr style={{ background: Math.abs(diff4) >= 0.25 ? `${WFR_C.amber}0e` : '#f9fafb' }}>
+                        <td style={{ padding:'9px 12px', fontSize:12, fontWeight:700, color:WFR_C.text }}>Night shift (Diff)</td>
+                        <td style={{ padding:'9px 12px', fontSize:13, fontWeight:700, color: Math.abs(diff4) >= 0.25 ? WFR_C.amber : WFR_C.text2, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{WFR_fmtDelta(diff4, 'D')} D</td>
+                        {show6 && <td style={{ padding:'9px 12px', fontSize:13, fontWeight:700, color: Math.abs(diff6) >= 0.25 ? WFR_C.amber : WFR_C.text2, textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{WFR_fmtDelta(diff6, 'D')} D</td>}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </div>
+          {show6 && (
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:14, padding:'10px 14px', background:'#fffbeb', border:'1.5px solid #fcd34d', borderRadius:10 }}>
+              <WFR_ProvTag/>
+              <span style={{ fontSize:11, color:'#92400e', lineHeight:1.45 }}>The 6 mm column depends on confirmation that the headset images a 6 mm pupil (Q3). The headset confirms a {WFR_ANALYSIS_DIA.toFixed(1)} mm aperture and dim/bright detection today; 6 mm is pending Reehana's optical team. If unconfirmed, this column is removed with no other change.</span>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // ════════ #1 PSF + SIMULATED-VA before/after ════════
+    const renderSimulation = () => {
+      const e = resultEye === 'both' ? 'OD' : resultEye;
+      const residual = Math.abs(WFR_SE(habitualRx[e]) - WFR_SE(subjRx[e])); // habitual blur driver
+      const beforeBlur = Math.min(2 + residual * 7, 10);
+      const afterBlur = 0.6; // residual HOA only
+      const psf = (spread, key) => (
+        <svg width="150" height="150" viewBox="0 0 150 150" key={key}>
+          <defs>
+            <radialGradient id={`wfrpsf-${key}`} cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor={accent} stopOpacity="0.95"/>
+              <stop offset="35%" stopColor={accent} stopOpacity="0.5"/>
+              <stop offset="100%" stopColor={accent} stopOpacity="0"/>
+            </radialGradient>
+            <filter id={`wfrblur-${key}`}><feGaussianBlur stdDeviation={spread}/></filter>
+          </defs>
+          <rect x="0" y="0" width="150" height="150" fill="#0a0e1a"/>
+          <circle cx="75" cy="75" r={10 + spread * 2.2} fill={`url(#wfrpsf-${key})`} filter={`url(#wfrblur-${key})`}/>
+        </svg>
+      );
+      const simLine = (blur, key) => (
+        <div key={key} style={{ background:'#fff', borderRadius:8, padding:'14px 10px', display:'flex', gap:10, justifyContent:'center', alignItems:'center', overflow:'hidden' }}>
+          {['F','E','L','O','P','Z','D'].map((c,i) => (
+            <span key={i} style={{ fontSize:34, fontWeight:700, color:'#111', filter:`blur(${blur}px)`, lineHeight:1 }}>{c}</span>
+          ))}
+        </div>
+      );
+      return (
+        <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'18px 20px' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6, flexWrap:'wrap' }}>
+            <div style={WFR_REPORT_LABEL}>Point-spread &amp; simulated acuity</div>
+            <div style={{ flex:1 }}/>
+            <div style={{ display:'flex', background:'#f3f4f6', borderRadius:8, padding:3, gap:2 }}>
+              {[['OD','Right'], ['OS','Left']].map(([v,l]) => (
+                <button key={v} onClick={() => setResultEye(v)} style={{ padding:'6px 14px', borderRadius:6, border:'none', cursor:'pointer', background: e===v ? '#fff' : 'transparent', color: e===v ? '#111827' : '#6b7280', fontSize:11, fontWeight:700, boxShadow: e===v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', fontFamily:WFR_FONT }}>{l}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ fontSize:12, color:'#6b7280', lineHeight:1.55, marginBottom:16 }}>Retinal point-spread function and a simulated acuity line, reconstructed from the Zernike wavefront. Before = the patient's habitual glasses; after = the new prescription.</div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:18 }}>
+            {[['Through habitual glasses', beforeBlur, 'before'], ['Through new prescription', afterBlur, 'after']].map(([title, blur, key]) => (
+              <div key={key} style={{ border:`1.5px solid ${key==='after' ? accent+'55' : '#e5e7eb'}`, borderRadius:12, overflow:'hidden' }}>
+                <div style={{ padding:'10px 14px', background: key==='after' ? `${accent}0c` : '#f9fafb', borderBottom:'1px solid #e5e7eb', display:'flex', alignItems:'center', gap:8 }}>
+                  <span style={{ fontSize:12, fontWeight:700, color: key==='after' ? accent : WFR_C.text2 }}>{title}</span>
+                  {key==='after' && <span style={{ fontSize:9, fontWeight:700, color:accent, background:`${accent}18`, padding:'2px 8px', borderRadius:10, textTransform:'uppercase' }}>New</span>}
+                </div>
+                <div style={{ padding:16, display:'flex', flexDirection:'column', gap:12, alignItems:'center' }}>
+                  <div style={{ display:'flex', gap:14, alignItems:'center' }}>
+                    {psf(blur, key)}
+                    <div style={{ fontSize:11, color:WFR_C.muted, lineHeight:1.5, maxWidth:90 }}>{key==='after' ? 'Tight, near-diffraction-limited point' : 'Spread point — blur from uncorrected error'}</div>
+                  </div>
+                  {simLine(blur, key)}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:14, padding:'10px 14px', background:'#fffbeb', border:'1.5px solid #fcd34d', borderRadius:10 }}>
+            <WFR_ProvTag note="Zernike ceiling pending optical-team confirmation"/>
+            <span style={{ fontSize:11, color:'#92400e', lineHeight:1.45 }}>Reconstructed from {WFR_ZERNIKE_MODES} Zernike modes (to {WFR_ZERNIKE_MAX_ORDER}th order) at a {WFR_ANALYSIS_DIA.toFixed(1)} mm analysis diameter — the order ceiling is pending Reehana's optical team (Q7). Simulation is illustrative; it is not a substitute for the measured acuity.</span>
+          </div>
+        </div>
+      );
+    };
+
+    // ════════ #6 REFRACTION-BASED PROGRESSION TRACKER ════════
+    const renderProgression = () => {
+      const W = 620, H = 220, padL = 44, padR = 16, padT = 18, padB = 34;
+      const series = {};
+      objSequence.forEach(e => { series[e] = [...WFR_VISITS[e], { y:'2026', se: parseFloat(WFR_SE(subjRx[e]).toFixed(2)) }]; });
+      const allSE = objSequence.flatMap(e => series[e].map(p => p.se));
+      const minSE = Math.min(...allSE, 0), maxSE = Math.max(...allSE, 0);
+      const span = (maxSE - minSE) || 1;
+      const years = series.OD.map(p => p.y);
+      const xAt = i => padL + (i / (years.length - 1)) * (W - padL - padR);
+      const yAt = se => padT + ((maxSE - se) / span) * (H - padT - padB);
+      const colorFor = e => e === 'OD' ? accent : WFR_C.navy;
+      const rateFor = e => {
+        const s = series[e]; const yrs = (parseInt(s[s.length-1].y) - parseInt(s[0].y)) || 1;
+        return (s[s.length-1].se - s[0].se) / yrs; // signed D/yr
+      };
+      const norm = WFR_PROG_NORMS.find(n => n.band === WFR_PATIENT_BAND);
+      return (
+        <>
+          <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'18px 20px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6, flexWrap:'wrap' }}>
+              <div style={WFR_REPORT_LABEL}>Spherical-equivalent progression</div>
+              <div style={{ flex:1 }}/>
+              <div style={{ display:'flex', gap:14 }}>
+                {objSequence.map(e => (<div key={e} style={{ display:'flex', alignItems:'center', gap:6 }}><span style={{ width:12, height:3, background:colorFor(e), borderRadius:2 }}/><span style={{ fontSize:11, fontWeight:700, color:colorFor(e) }}>{e}</span></div>))}
+              </div>
+            </div>
+            <div style={{ fontSize:12, color:'#6b7280', lineHeight:1.55, marginBottom:14 }}>Spherical equivalent across visits, from the patient's cloud time-series. The current exam is the rightmost point.</div>
+            <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display:'block' }}>
+              {[0,0.25,0.5,0.75,1].map(t => { const se = maxSE - t*span; const y = yAt(se); return (
+                <g key={t}><line x1={padL} y1={y} x2={W-padR} y2={y} stroke="#f0f1f3" strokeWidth="1"/><text x={padL-8} y={y+3} textAnchor="end" fontSize="9" fill="#9ca3af" fontFamily="Nunito Sans">{WFR_fmtSE(se)}</text></g>
+              ); })}
+              {years.map((yr,i) => (<text key={yr} x={xAt(i)} y={H-padB+18} textAnchor="middle" fontSize="9" fill="#9ca3af" fontFamily="Nunito Sans">{yr}</text>))}
+              {objSequence.map(e => (
+                <g key={e}>
+                  <polyline fill="none" stroke={colorFor(e)} strokeWidth="2.5" strokeLinejoin="round" points={series[e].map((p,i) => `${xAt(i)},${yAt(p.se)}`).join(' ')}/>
+                  {series[e].map((p,i) => (<circle key={i} cx={xAt(i)} cy={yAt(p.se)} r={i===series[e].length-1?5:3.5} fill={i===series[e].length-1?colorFor(e):'#fff'} stroke={colorFor(e)} strokeWidth="2"/>))}
+                </g>
+              ))}
+            </svg>
+          </div>
+
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+            {objSequence.map(e => {
+              const rate = rateFor(e); const mag = Math.abs(rate);
+              const inBand = mag >= norm.lo && mag <= norm.hi;
+              const aboveBand = mag > norm.hi;
+              return (
+                <div key={e} style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'16px 18px' }}>
+                  <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:8 }}>
+                    <span style={{ fontSize:12, fontWeight:700, color:colorFor(e) }}>{e}</span>
+                    <span style={{ fontSize:22, fontWeight:700, color:WFR_C.navy, fontVariantNumeric:'tabular-nums' }}>{rate > 0 ? '+' : ''}{rate.toFixed(2)} D/yr</span>
+                  </div>
+                  <div style={{ fontSize:11, color:WFR_C.muted, marginBottom:6 }}>Mean rate across {series[e].length} visits</div>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', borderRadius:9, background:'#f9fafb', border:'1px solid #e5e7eb' }}>
+                    <span style={{ fontSize:11, color:'#6b7280' }}>{WFR_PATIENT_BAND} reference</span>
+                    <span style={{ fontSize:12, fontWeight:700, color: aboveBand ? WFR_C.amber : '#047857', fontVariantNumeric:'tabular-nums' }}>−{norm.lo.toFixed(2)} to −{norm.hi.toFixed(2)} D/yr</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'16px 20px' }}>
+            <div style={{ ...WFR_REPORT_LABEL, marginBottom:12 }}>Age-banded progression reference</div>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontVariantNumeric:'tabular-nums' }}>
+              <thead><tr style={{ background:WFR_C.navy }}>{['Age band','Mean myopia progression (D/yr)'].map((h,i) => (<th key={h} style={{ fontSize:11, fontWeight:700, color:'#fff', textAlign: i===0?'left':'right', padding:'8px 12px' }}>{h}</th>))}</tr></thead>
+              <tbody>
+                {WFR_PROG_NORMS.map(n => {
+                  const cur = n.band === WFR_PATIENT_BAND;
+                  return (<tr key={n.band} style={{ borderBottom:'1px solid #e5e7eb', background: cur ? `${accent}0a` : 'transparent' }}>
+                    <td style={{ fontSize:12, fontWeight: cur?700:400, color: cur?accent:WFR_C.text2, padding:'8px 12px' }}>{n.band}{cur ? `  ·  patient (age ${WFR_PATIENT_AGE})` : ''}</td>
+                    <td style={{ fontSize:12, color:WFR_C.text2, textAlign:'right', padding:'8px 12px' }}>−{n.lo.toFixed(2)} to −{n.hi.toFixed(2)}</td>
+                  </tr>);
+                })}
+              </tbody>
+            </table>
+            <div style={{ fontSize:11, color:WFR_C.muted, marginTop:10, fontStyle:'italic' }}>Reference bands are population means. Whether progression is clinically at-risk is the clinician's determination; the device reports the measured rate only.</div>
+          </div>
+        </>
+      );
+    };
+
     return (
       <div style={{ padding:'20px 24px', minHeight:'100%' }}>
         <div style={{ maxWidth:1080, margin:'0 auto', display:'flex', flexDirection:'column', gap:14 }}>
@@ -1195,18 +2033,39 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
             <div style={{ width:38, height:38, borderRadius:9, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3" fill="#fff" stroke="none"/></svg>
             </div>
-            <div>
+            <div style={{ flex:1 }}>
               <div style={{ fontSize:17, fontWeight:700, color:'#fff' }}>Wavefront Refraction Report</div>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.6)' }}>{ranObjective ? 'Full refraction (objective + subjective)' : 'Subjective only'}</div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.6)' }}>{ranObjective ? 'Objective + subjective' : 'Subjective only'}</div>
             </div>
+            <span style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.85)', background:'rgba(255,255,255,0.12)', padding:'5px 12px', borderRadius:20, letterSpacing:'0.05em' }}>v0.2.7 DRAFT</span>
           </div>
 
+          {/* Tab bar */}
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap', background:'#fff', borderRadius:12, border:'1.5px solid #e5e7eb', padding:6 }}>
+            {reportTabs.map(([id, label]) => {
+              const on = activeTab === id;
+              const isNew = ['comparison','daynight','simulation','progression'].includes(id);
+              return (
+                <button key={id} onClick={() => setReportTab(id)} style={{ flex:'1 1 auto', minHeight:42, padding:'8px 16px', borderRadius:9, border:'none', cursor:'pointer', background: on ? accent : 'transparent', color: on ? '#fff' : WFR_C.text2, fontSize:12, fontWeight:700, fontFamily:WFR_FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:7, whiteSpace:'nowrap' }}>
+                  {label}
+                  {isNew && <span style={{ width:6, height:6, borderRadius:'50%', background: on ? '#fff' : accent }}/>}
+                </button>
+              );
+            })}
+          </div>
+
+          {activeTab === 'comparison' && renderComparison()}
+          {activeTab === 'daynight' && renderDayNight()}
+          {activeTab === 'simulation' && renderSimulation()}
+          {activeTab === 'progression' && renderProgression()}
+
+          {activeTab === 'summary' && (<>
           {/* Patient information */}
           <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'18px 20px' }}>
             <div style={{ ...WFR_REPORT_LABEL, marginBottom:14 }}>Patient Information</div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:14 }}>
               {[['Patient name','Marcus Williams'], ['Patient ID','#4821'], ['Birthdate','10/11/1983'], ['Exam date', now.toLocaleDateString('en-US')],
-                ['Refraction mode', ranObjective ? 'Full (objective + subjective)' : 'Subjective only'], ['Fog applied', fogAmount > 0 ? `Yes (+${fogAmount.toFixed(2)} D)` : 'No'],
+                ['Refraction mode', ranObjective ? 'Objective + subjective' : 'Subjective only'], ['Fog applied', fogAmount > 0 ? `Yes (+${fogAmount.toFixed(2)} D)` : 'No'],
                 ['JCC power used', `${jccPower.toFixed(2)} D`], ['Test duration', fmtTime(elapsed)]].map(([l,v]) => (
                 <div key={l}><div style={{ fontSize:10, fontWeight:600, color:'#6b7280', marginBottom:3 }}>{l}</div><div style={{ fontSize:12, fontWeight:700, color:'#111827', fontVariantNumeric:'tabular-nums' }}>{v}</div></div>
               ))}
@@ -1236,37 +2095,74 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
             </div>
           </div>
 
-          {/* Objective + subjective change two-box */}
-          <div style={{ display:'grid', gridTemplateColumns: ranObjective ? '1fr 1fr' : '1fr', gap:14 }}>
-            {ranObjective && (
+          {/* Per-line acuity (subjective chart) + session audit (ported from v3) */}
+          <div style={{ display:'grid', gridTemplateColumns: (chartOverrides.length || chartEdits.length) > 0 ? '1fr 300px' : '1fr', gap:14 }}>
+            <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'18px 20px' }}>
+              <div style={{ ...WFR_REPORT_LABEL, marginBottom:14 }}>Acuity by line — subjective endpoint</div>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontVariantNumeric:'tabular-nums' }}>
+                <thead><tr style={{ background:WFR_C.navy }}>{['Eye','Line','Acuity','Correct','% correct'].map((h,i) => (<th key={h} style={{ fontSize:11, fontWeight:700, color:'#fff', textAlign: i < 3 ? 'left' : 'right', padding:'8px 12px' }}>{h}</th>))}</tr></thead>
+                <tbody>
+                  {(() => {
+                    const rows = [];
+                    objSequence.forEach(eye => {
+                      WFR_VA_LINES.forEach(line => {
+                        const res = chartResults[chartKey(eye, line.n)] || [];
+                        if (!res.some(x => x != null)) return;
+                        const correct = res.filter(x => x === 'correct').length;
+                        const total = line.letters.length;
+                        rows.push(
+                          <tr key={eye + line.n} style={{ borderBottom:'1px solid #e5e7eb' }}>
+                            <td style={{ fontSize:12, fontWeight:700, color:accent, padding:'8px 12px' }}>{eye}</td>
+                            <td style={{ fontSize:12, color:WFR_C.text2, padding:'8px 12px' }}>Line {line.n}</td>
+                            <td style={{ fontSize:12, color:WFR_C.text2, padding:'8px 12px' }}>{line.va}</td>
+                            <td style={{ fontSize:12, color:WFR_C.text2, textAlign:'right', padding:'8px 12px' }}>{correct}/{total}</td>
+                            <td style={{ fontSize:12, fontWeight:700, color:WFR_C.navy, textAlign:'right', padding:'8px 12px' }}>{Math.round(correct / total * 100)}%</td>
+                          </tr>
+                        );
+                      });
+                    });
+                    return rows.length ? rows : <tr><td colSpan={5} style={{ padding:'14px 12px', fontSize:12, color:WFR_C.muted, textAlign:'center' }}>No chart lines scored.</td></tr>;
+                  })()}
+                </tbody>
+              </table>
+              <div style={{ fontSize:11, color:WFR_C.muted, marginTop:10, fontStyle:'italic' }}>Measured letters read per line. The clinician determines the clinical interpretation; the device does not assign a pass/fail verdict.</div>
+            </div>
+            {(chartOverrides.length || chartEdits.length) > 0 && (
               <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'18px 20px' }}>
-                <div style={{ ...WFR_REPORT_LABEL, marginBottom:14 }}>Objective Results</div>
-                <WFR_MeasTable eyeKeys={eyeKeys}/>
+                <div style={{ ...WFR_REPORT_LABEL, marginBottom:14 }}>Session audit</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                  <div><div style={{ fontSize:11, color:WFR_C.muted, marginBottom:3 }}>Ahead-of-progress overrides</div><div style={{ fontSize:22, fontWeight:700, color:WFR_C.navy }}>{chartOverrides.length}</div></div>
+                  <div><div style={{ fontSize:11, color:WFR_C.muted, marginBottom:3 }}>Recorded-answer edits</div><div style={{ fontSize:22, fontWeight:700, color:WFR_C.navy }}>{chartEdits.length}</div></div>
+                </div>
+                <div style={{ fontSize:11, color:WFR_C.muted, marginTop:12, lineHeight:1.5, fontStyle:'italic' }}>Captured for quality assurance and operator training.</div>
               </div>
             )}
-            <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'18px 20px' }}>
-              <div style={{ ...WFR_REPORT_LABEL, marginBottom:14 }}>Subjective Correction</div>
-              {ranObjective ? (
-                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                  <div style={{ fontSize:11, color:'#6b7280', lineHeight:1.5 }}>Change from objective starting point to final subjective Rx:</div>
-                  {objSequence.map(e => (
-                    <div key={e} style={{ padding:'12px 14px', background:'#f9fafb', borderRadius:10, border:'1px solid #e5e7eb' }}>
-                      <div style={{ fontSize:11, fontWeight:700, color:accent, marginBottom:4 }}>{e}</div>
-                      <div style={{ fontSize:12, color:'#374151', fontWeight:600, fontVariantNumeric:'tabular-nums' }}>{deltaRow(e)}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ fontSize:12, color:'#6b7280', lineHeight:1.6 }}>Subjective refinement completed for OD and OS. No objective stage was run in this session.</div>
-              )}
-            </div>
           </div>
 
+          {/* Clinical summary — DATA ONLY, no determinations */}
+          <div style={{ background:`${accent}0f`, border:`1.5px solid ${accent}33`, borderRadius:14, padding:'16px 20px' }}>
+            <div style={{ ...WFR_REPORT_LABEL, marginBottom:10 }}>Clinical Summary</div>
+            <ul style={{ margin:0, paddingLeft:18, fontSize:13, color:'#374151', lineHeight:1.7 }}>
+              {ranObjective && <li>Objective refraction completed: {WFR_OBJ.OD.scans} scan(s) OD · {WFR_OBJ.OS.scans} scan(s) OS.</li>}
+              <li>Subjective refinement completed: OD and OS.</li>
+              <li>Final Rx pending clinician certification.</li>
+            </ul>
+          </div>
+
+          {/* Session notes */}
+          <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'18px 20px' }}>
+            <div style={{ ...WFR_REPORT_LABEL, marginBottom:10 }}>Session notes</div>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Clinician notes…" rows={3}
+              style={{ width:'100%', padding:'10px 12px', border:'1px solid #e5e7eb', borderRadius:10, fontSize:13, color:'#374151', fontFamily:WFR_FONT, resize:'vertical', outline:'none', boxSizing:'border-box' }}/>
+          </div>
+          </>)}
+
           {/* Wavefront maps (objective only) */}
-          {ranObjective && (
+          {activeTab === 'wavefront' && ranObjective && (
             <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'18px 20px' }}>
               <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16, flexWrap:'wrap' }}>
                 <div style={WFR_REPORT_LABEL}>Wavefront Analysis</div>
+                <span style={{ fontSize:11, color:WFR_C.muted }}>{WFR_ANALYSIS_DIA.toFixed(1)} mm analysis · {WFR_ZERNIKE_MODES} Zernike modes</span>
                 <div style={{ flex:1 }}/>
                 {/* eye tabs */}
                 <div style={{ display:'flex', background:'#f3f4f6', borderRadius:8, padding:3, gap:2 }}>
@@ -1314,23 +2210,6 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
               <div style={{ marginTop:18 }}><WFR_MeasTable eyeKeys={eyeKeys}/></div>
             </div>
           )}
-
-          {/* Clinical summary — DATA ONLY, no determinations */}
-          <div style={{ background:`${accent}0f`, border:`1.5px solid ${accent}33`, borderRadius:14, padding:'16px 20px' }}>
-            <div style={{ ...WFR_REPORT_LABEL, marginBottom:10 }}>Clinical Summary</div>
-            <ul style={{ margin:0, paddingLeft:18, fontSize:13, color:'#374151', lineHeight:1.7 }}>
-              {ranObjective && <li>Objective refraction completed: {WFR_OBJ.OD.scans} scan(s) OD · {WFR_OBJ.OS.scans} scan(s) OS.</li>}
-              <li>Subjective refinement completed: OD and OS.</li>
-              <li>Final Rx pending clinician certification.</li>
-            </ul>
-          </div>
-
-          {/* Session notes */}
-          <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'18px 20px' }}>
-            <div style={{ ...WFR_REPORT_LABEL, marginBottom:10 }}>Session notes</div>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Clinician notes…" rows={3}
-              style={{ width:'100%', padding:'10px 12px', border:'1px solid #e5e7eb', borderRadius:10, fontSize:13, color:'#374151', fontFamily:WFR_FONT, resize:'vertical', outline:'none', boxSizing:'border-box' }}/>
-          </div>
 
           {/* Actions */}
           <div style={{ display:'flex', alignItems:'center', gap:12, paddingBottom:24, flexWrap:'wrap' }}>
