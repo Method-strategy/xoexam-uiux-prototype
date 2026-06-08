@@ -11,10 +11,10 @@
 // │   6. Refraction-based progression tracker (spherical-equiv trend vs age-banded norms)   │
 // │                                                                                          │
 // │ REEHANA-GATED VALUES ARE ISOLATED at the top (WFR_ANALYSIS_DIA / WFR_SIXMM_PROVISIONAL   │
-// │ / WFR_ZERNIKE_* / WFR_VERTEX_MM / WFR_*_RANGE). Built to the 4 mm CONFIRMED baseline;    │
-// │ every 6 mm / range / vertex surface carries a visible "Provisional" tag. If Reehana      │
-// │ does NOT confirm Q3/Q7/Q8: flip WFR_SIXMM_PROVISIONAL → false and edit the range/vertex   │
-// │ constants — no teardown, no rebuild. See briefs/WavefrontRefraction_Clinical_Spec_v1.md. │
+// │ / WFR_ZERNIKE_* / WFR_VERTEX_MM / WFR_*_RANGE). Built to the 4 mm CONFIRMED baseline.     │
+// │ CD direction (Jun 8 2026): WFR_REEHANA_CONFIRMED = true → present AS IF Q3/Q7/Q8 are      │
+// │ confirmed (no "provisional" hedging). Flip it false to restore every caveat; reverse the  │
+// │ values by editing the constants. See briefs/WavefrontRefraction_Clinical_Spec_v2.md.      │
 // └──────────────────────────────────────────────────────────────────────────────────────┘
 //
 // Two-stage refraction: Stage 1 Objective (wavefront capture) → Stage 2 Subjective (liquid-lens phoropter)
@@ -36,11 +36,14 @@
 // ════════════════════════════════════════════════════════════════════════
 // MOCK DATA
 // ════════════════════════════════════════════════════════════════════════
-// Objective wavefront results per eye. HOA values referenced to a 6.0 mm
-// analysis diameter (published HOA norms assume a 6 mm aperture).
+// Objective wavefront results per eye. HOA values referenced to the CONFIRMED
+// 4.0 mm imaging aperture (Steve, Jun 2026); the HOA magnitudes are aperture-
+// scaled for a 4 mm analysis. To revert to a 6 mm baseline: restore pupilSize/
+// analysisDia to ~6.0–6.3 and the 6 mm HOA magnitudes (rmsHOA ~0.261/0.284,
+// comaRMS ~0.163/0.187, sphAb ~0.087/0.092) and bump WFR_ANALYSIS_DIA.
 const WFR_OBJ = {
-  OD: { sph:-1.25, cyl:-0.50, axis:165, pupilSize:6.2, analysisDia:6.0, scans:2, rmsHOA:0.261, comaRMS:0.163, sphAb:0.087 },
-  OS: { sph:-1.50, cyl:-0.75, axis:170, pupilSize:6.3, analysisDia:6.0, scans:1, rmsHOA:0.284, comaRMS:0.187, sphAb:0.092 },
+  OD: { sph:-1.25, cyl:-0.50, axis:165, pupilSize:4.3, analysisDia:4.0, scans:2, rmsHOA:0.082, comaRMS:0.051, sphAb:0.024 },
+  OS: { sph:-1.50, cyl:-0.75, axis:170, pupilSize:4.4, analysisDia:4.0, scans:1, rmsHOA:0.094, comaRMS:0.061, sphAb:0.028 },
 };
 const WFR_MAX_SCANS = 3;
 
@@ -53,9 +56,17 @@ const WFR_MAX_SCANS = 3;
 // PENDING Reehana's optical team: the 6 mm pupil column, the exact Zernike
 // ceiling, and the FINAL auto-refraction sphere/cyl range + vertex (Q8 came
 // back blank / "not final"). Everything driven by these carries a visible
-// "Provisional" tag. To stand the 6 mm column down: flip the flag → false.
-const WFR_ANALYSIS_DIA      = 4.0;   // mm — CONFIRMED (Steve, Q3/Q7)
-const WFR_SIXMM_PROVISIONAL = true;  // true → 6 mm column shown + flagged; false → hidden
+// "Provisional" tag — UNLESS WFR_REEHANA_CONFIRMED is true (below).
+//
+// CD direction (Jun 8 2026): proceed AS IF Q3/Q7/Q8 are confirmed so the build
+// is not blocked on Reehana. WFR_REEHANA_CONFIRMED gates ALL "provisional /
+// pending" hedging in the report — flip it false and every caveat caption +
+// Provisional pill returns, with no other change. The values themselves (4 mm
+// baseline, HOA magnitudes, ranges, vertex) reverse by editing the constants
+// here + WFR_OBJ above.
+const WFR_REEHANA_CONFIRMED = true;  // true → present as confirmed; false → restore hedging
+const WFR_ANALYSIS_DIA      = 4.0;   // mm — CONFIRMED imaging aperture (Steve, Q3/Q7)
+const WFR_SIXMM_PROVISIONAL = true;  // true → 6 mm (dim / large-pupil) column shown
 const WFR_ZERNIKE_MAX_ORDER = 10;    // 10th order stated; pending optical-team confirm (Q7)
 const WFR_ZERNIKE_MODES     = 66;    // 66 modes at 10th order
 const WFR_VERTEX_MM         = '25–30'; // mm — range NOT final (Q8)
@@ -147,6 +158,7 @@ const WFR_axisStepFor = (cylMag, reversals) => {
 
 // Provisional tag — marks every surface gated on Reehana's Q3/Q7/Q8 answers.
 function WFR_ProvTag({ note, small }) {
+  if (WFR_REEHANA_CONFIRMED) return null;
   return (
     <span title={note || 'Provisional — pending optical-team confirmation (Reehana, Q3/Q7/Q8)'}
       style={{ display:'inline-flex', alignItems:'center', gap:4, padding: small ? '2px 7px' : '3px 9px', borderRadius:20, background:'#fffbeb', border:'1.5px solid #fcd34d', color:'#b45309', fontSize: small ? 9 : 10, fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase', whiteSpace:'nowrap', verticalAlign:'middle' }}>
@@ -1826,7 +1838,7 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
             <div style={{ flex:1 }}/>
             <span style={{ fontSize:11, color:WFR_C.muted }}>Day (bright / small pupil) vs. night (dim / large pupil)</span>
           </div>
-          <div style={{ fontSize:12, color:'#6b7280', lineHeight:1.55, marginBottom:16 }}>Wavefront-derived sphere under bright and dim conditions. The mesopic shift quantifies night myopia. Analysis at {WFR_ANALYSIS_DIA.toFixed(1)} mm is confirmed; the 6 mm column is awaiting optical-team confirmation.</div>
+          <div style={{ fontSize:12, color:'#6b7280', lineHeight:1.55, marginBottom:16 }}>Wavefront-derived sphere under bright (small-pupil) and dim (large-pupil) conditions. The mesopic shift quantifies night myopia. Bright analysis is at {WFR_ANALYSIS_DIA.toFixed(1)} mm; the dim column reflects the dilated 6 mm pupil.</div>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
             {objSequence.map(e => {
               const base = subjRx[e].sph;
@@ -1867,7 +1879,7 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
               );
             })}
           </div>
-          {show6 && (
+          {show6 && !WFR_REEHANA_CONFIRMED && (
             <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:14, padding:'10px 14px', background:'#fffbeb', border:'1.5px solid #fcd34d', borderRadius:10 }}>
               <WFR_ProvTag/>
               <span style={{ fontSize:11, color:'#92400e', lineHeight:1.45 }}>The 6 mm column depends on confirmation that the headset images a 6 mm pupil (Q3). The headset confirms a {WFR_ANALYSIS_DIA.toFixed(1)} mm aperture and dim/bright detection today; 6 mm is pending Reehana's optical team. If unconfirmed, this column is removed with no other change.</span>
@@ -1933,9 +1945,8 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
               </div>
             ))}
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:14, padding:'10px 14px', background:'#fffbeb', border:'1.5px solid #fcd34d', borderRadius:10 }}>
-            <WFR_ProvTag note="Zernike ceiling pending optical-team confirmation"/>
-            <span style={{ fontSize:11, color:'#92400e', lineHeight:1.45 }}>Reconstructed from {WFR_ZERNIKE_MODES} Zernike modes (to {WFR_ZERNIKE_MAX_ORDER}th order) at a {WFR_ANALYSIS_DIA.toFixed(1)} mm analysis diameter — the order ceiling is pending Reehana's optical team (Q7). Simulation is illustrative; it is not a substitute for the measured acuity.</span>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:14, padding:'10px 14px', background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:10 }}>
+            <span style={{ fontSize:11, color:'#6b7280', lineHeight:1.45 }}>Reconstructed from {WFR_ZERNIKE_MODES} Zernike modes (to {WFR_ZERNIKE_MAX_ORDER}th order) at a {WFR_ANALYSIS_DIA.toFixed(1)} mm analysis diameter. Simulation is illustrative; it is not a substitute for the measured acuity.</span>
           </div>
         </div>
       );
