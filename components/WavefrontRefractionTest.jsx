@@ -1552,7 +1552,7 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
                         <span style={{ ...WFR_VIOLATOR, fontSize:9, color: smartBracket ? accent : WFR_C.muted }}>Smart-Cylinder bracketing</span>
                         <div style={{ flex:1 }}/>
                         <button onClick={() => setSmartBracket(v => !v)} title="Toggle auto-bracketing"
-                          style={{ width:38, height:22, borderRadius:11, border:'none', cursor:'pointer', background: smartBracket ? accent : '#cbd5e1', position:'relative', flexShrink:0, transition:'background 0.15s' }}>
+                          style={{ width:38, height:22, minWidth:38, minHeight:22, borderRadius:11, border:'none', cursor:'pointer', background: smartBracket ? accent : '#cbd5e1', position:'relative', flexShrink:0, transition:'background 0.15s' }}>
                           <span style={{ position:'absolute', top:2, left: smartBracket ? 18 : 2, width:18, height:18, borderRadius:'50%', background:'#fff', transition:'left 0.15s', boxShadow:'0 1px 2px rgba(0,0,0,0.2)' }}/>
                         </button>
                       </div>
@@ -1674,7 +1674,7 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
                       ))}
                     </div>
                     <label style={{ display:'flex', alignItems:'center', gap:10, marginTop:14, cursor:'pointer' }}>
-                      <button onClick={() => setBinocFog(v => !v)} style={{ width:38, height:22, borderRadius:11, border:'none', cursor:'pointer', background: binocFog ? accent : '#cbd5e1', position:'relative', flexShrink:0 }}>
+                      <button onClick={() => setBinocFog(v => !v)} style={{ width:38, height:22, minWidth:38, minHeight:22, borderRadius:11, border:'none', cursor:'pointer', background: binocFog ? accent : '#cbd5e1', position:'relative', flexShrink:0 }}>
                         <span style={{ position:'absolute', top:2, left: binocFog ? 18 : 2, width:18, height:18, borderRadius:'50%', background:'#fff', transition:'left 0.15s' }}/>
                       </button>
                       <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Fog both eyes +0.75 D</span>
