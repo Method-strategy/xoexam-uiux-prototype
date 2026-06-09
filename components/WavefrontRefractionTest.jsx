@@ -1,7 +1,7 @@
-// WavefrontRefractionTest v2.jsx — Method Marketing Agency, June 2026 · v0.2.7 DRAFT
+// WavefrontRefractionTest.jsx — Method Marketing Agency, June 2026
 // xoExam clinical tablet UI — 1280×800 base canvas
 //
-// ┌─ v0.2.7 DRAFT — competitive-parity pass (Marco OPD-Scan III + Reichert Phoroptor VRx) ─┐
+// ┌─ Competitive-parity pass (Marco OPD-Scan III + Reichert Phoroptor VRx) ────────────────┐
 // │ Adds the six CD-approved enhancements (Jun 2026) in one pass:                          │
 // │   1. PSF + simulated-VA before/after (driven by Zernike, tied to old-vs-new Rx)        │
 // │   2. Binocular balance step (fogging / alternate occlusion — no prism needed)          │
@@ -2046,7 +2046,6 @@ function WavefrontRefractionTest({ onBack, tweaks }) {
               <div style={{ fontSize:17, fontWeight:700, color:'#fff' }}>Wavefront Refraction Report</div>
               <div style={{ fontSize:11, color:'rgba(255,255,255,0.6)' }}>{ranObjective ? 'Objective + subjective' : 'Subjective only'}</div>
             </div>
-            <span style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.85)', background:'rgba(255,255,255,0.12)', padding:'5px 12px', borderRadius:20, letterSpacing:'0.05em' }}>v0.2.7 DRAFT</span>
           </div>
 
           {/* Tab bar */}
