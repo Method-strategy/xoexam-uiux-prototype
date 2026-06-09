@@ -10,11 +10,11 @@
 // │   5. Smart-Cylinder auto-bracketing on the JCC (step shrinks after each reversal)       │
 // │   6. Refraction-based progression tracker (spherical-equiv trend vs age-banded norms)   │
 // │                                                                                          │
-// │ REEHANA-GATED VALUES ARE ISOLATED at the top (WFR_ANALYSIS_DIA / WFR_SIXMM_PROVISIONAL   │
-// │ / WFR_ZERNIKE_* / WFR_VERTEX_MM / WFR_*_RANGE). Built to the 4 mm CONFIRMED baseline.     │
-// │ CD direction (Jun 8 2026): WFR_REEHANA_CONFIRMED = true → present AS IF Q3/Q7/Q8 are      │
-// │ confirmed (no "provisional" hedging). Flip it false to restore every caveat; reverse the  │
-// │ values by editing the constants. See briefs/WavefrontRefraction_Clinical_Spec_v2.md.      │
+// │ HEADSET-SENSOR VALUES ARE ISOLATED at the top (WFR_ANALYSIS_DIA / WFR_SIXMM_PROVISIONAL   │
+// │ / WFR_ZERNIKE_* / WFR_VERTEX_MM / WFR_*_RANGE). Built to Steve's confirmed answers.        │
+// │ CD direction (Jun 9 2026): WFR_REEHANA_CONFIRMED = true → Q3/Q7/Q8 present AS CONFIRMED,   │
+// │ no "Provisional" pills / pending captions. Any later hardware revision is a one-line edit. │
+// │ See briefs/WavefrontRefraction_Clinical_Spec_v2.md.                                        │
 // └──────────────────────────────────────────────────────────────────────────────────────┘
 //
 // Two-stage refraction: Stage 1 Objective (wavefront capture) → Stage 2 Subjective (liquid-lens phoropter)
@@ -48,30 +48,28 @@ const WFR_OBJ = {
 const WFR_MAX_SCANS = 3;
 
 // ════════════════════════════════════════════════════════════════════════
-// REEHANA-GATED CONSTANTS (v0.2.7 draft · Jun 8 2026)
+// HEADSET-SENSOR CONSTANTS (v0.2.7 · confirmed from Steve, Jun 9 2026)
 // ────────────────────────────────────────────────────────────────────────
-// The ONLY values dependent on the open headset-sensor answers (Q3/Q7/Q8 of
-// "xoExam Headset Sensor Questions", Jun 2026). Steve CONFIRMED: 4 mm imaging,
-// dim-vs-bright pupil detection, 10th-order / 66-mode Zernike, vertex 25–30 mm.
-// PENDING Reehana's optical team: the 6 mm pupil column, the exact Zernike
-// ceiling, and the FINAL auto-refraction sphere/cyl range + vertex (Q8 came
-// back blank / "not final"). Everything driven by these carries a visible
-// "Provisional" tag — UNLESS WFR_REEHANA_CONFIRMED is true (below).
+// Values from the headset-sensor Q&A ("xoExam Headset Sensor Questions").
+// Steve's answers, treated as CONFIRMED for this build (CD direction Jun 9
+// 2026 — no "optical-team confirmation needed" hedging):
+//   Q3  — detects pupil in dim vs. bright light; measures wavefront at 4 mm
+//         and 6 mm pupil (day-vs-night refraction live).
+//   Q7  — 4 mm imaging aperture; Zernike to 10th order (66 modes), lenslet-set.
+//   Q8  — per opto-electrical spec sheet: sphere-only −14 to +14 D, sphere-
+//         with-cylinder −6 to +6 D, cylinder 0 to −5 D; aperture 7 mm typ.
 //
-// CD direction (Jun 8 2026): proceed AS IF Q3/Q7/Q8 are confirmed so the build
-// is not blocked on Reehana. WFR_REEHANA_CONFIRMED gates ALL "provisional /
-// pending" hedging in the report — flip it false and every caveat caption +
-// Provisional pill returns, with no other change. The values themselves (4 mm
-// baseline, HOA magnitudes, ranges, vertex) reverse by editing the constants
-// here + WFR_OBJ above.
-const WFR_REEHANA_CONFIRMED = true;  // true → present as confirmed; false → restore hedging
-const WFR_ANALYSIS_DIA      = 4.0;   // mm — CONFIRMED imaging aperture (Steve, Q3/Q7)
+// WFR_REEHANA_CONFIRMED = true → present all of the above as confirmed (no
+// "Provisional" pills / pending captions). These constants are still isolated
+// here so any later hardware revision is a one-line edit, not a rebuild.
+const WFR_REEHANA_CONFIRMED = true;  // CD direction Jun 9 2026: Steve's Q3/Q7/Q8 answers are confirmed — no hedging
+const WFR_ANALYSIS_DIA      = 4.0;   // mm — confirmed imaging aperture (Steve, Q3/Q7)
 const WFR_SIXMM_PROVISIONAL = true;  // true → 6 mm (dim / large-pupil) column shown
-const WFR_ZERNIKE_MAX_ORDER = 10;    // 10th order stated; pending optical-team confirm (Q7)
+const WFR_ZERNIKE_MAX_ORDER = 10;    // 10th order — lenslet-set (Steve, Q7)
 const WFR_ZERNIKE_MODES     = 66;    // 66 modes at 10th order
-const WFR_VERTEX_MM         = '25–30'; // mm — range NOT final (Q8)
-const WFR_SPHERE_RANGE      = '−20.00 to +20.00 D'; // PLACEHOLDER — Q8 returned blank
-const WFR_CYL_RANGE         = '0.00 to −10.00 D';   // PLACEHOLDER — Q8 returned blank
+const WFR_VERTEX_MM         = '25–30'; // mm — confirmed range (Steve)
+const WFR_SPHERE_RANGE      = '−14.00 to +14.00 D'; // sphere-only (Steve Q8 spec sheet)
+const WFR_CYL_RANGE         = '0.00 to −5.00 D';    // cylinder (Steve Q8 spec sheet)
 
 // Habitual (current spectacle) Rx — manual entry now; auto-pull from cloud
 // history later (Q9 confirmed: time-series patient profile is the goal).
@@ -81,7 +79,7 @@ const WFR_HABITUAL_SEED = {
 };
 
 // Photopic (bright / small pupil) vs. mesopic (dim / large pupil) refraction.
-// 4 mm analysis is CONFIRMED; the 6 mm column is provisional. Mesopic typically
+// 4 mm and 6 mm both confirmed (Steve, Q3). Mesopic typically
 // shifts more minus (night myopia). Values are sphere offsets from subjective.
 const WFR_DAYNIGHT = {
   OD: { photo4:0.00, meso4:-0.25, photo6:0.00, meso6:-0.50 },

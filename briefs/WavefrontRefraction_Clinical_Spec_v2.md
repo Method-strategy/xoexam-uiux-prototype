@@ -1,7 +1,7 @@
 # Wavefront Refraction — Clinical Specification v2
 
 **Component:** `components/WavefrontRefractionTest.jsx` · **Test ID:** `wavefront-refraction`
-**Status:** v0.2.7 — six competitive-parity enhancements merged into the single production component (v2 fork eliminated) · pending client review + Reehana hardware confirms
+**Status:** v0.2.8 — six competitive-parity enhancements merged into the single production component (v2 fork eliminated) · pending client review · hardware values confirmed (Steve, Q3/Q7/Q8, Jun 9 2026)
 **Authored:** Method Marketing Agency, June 2026
 **Source meeting:** xoExam v0.2.5 Review (May 27, 2026 · 2h16m · Zeshan Khan / Gary Hopkins / Steve Susanibar)
 
@@ -134,27 +134,27 @@ Benchmarked against the Marco OPD-Scan III aberrometer and the Reichert Phoropto
 1. **PSF + simulated-VA before/after** — point-spread-function render and simulated acuity derived from the Zernike set, comparing habitual Rx to the new Rx (Simulation tab). The before/after is tied to the old-vs-new Rx comparison.
 2. **Binocular balance step** — runs after both eyes via fogging / alternate occlusion (no prism hardware required); subjective `subjStep:'binocular'`.
 3. **Multi-source Rx comparison** — objective, subjective, habitual, and unaided with spherical-equivalent deltas (Rx-comparison tab). Habitual entered manually now; auto-pull from history later.
-4. **Photopic vs. mesopic (day & night) refraction** — 4 mm analysis (hardware-confirmed) plus a provisional 6 mm column and a night-shift Diff row (Day-&-night tab).
+4. **Photopic vs. mesopic (day & night) refraction** — 4 mm analysis plus a 6 mm column (both hardware-confirmed) and a night-shift Diff row (Day-&-night tab).
 5. **Smart-Cylinder auto-bracketing** — the JCC step size auto-sizes to the cylinder magnitude and narrows one rung after each reversal; toggle.
 6. **Refraction-based progression tracker** — spherical-equivalent trend over visits + D/year vs. age-banded reference (Progression tab); the at-risk determination is left to the clinician.
 
 **Report restructured into tabs:** Summary · Rx comparison · Day & night · Vision simulation · Wavefront (objective only) · Progression.
 
-### Reversibility — Reehana-gated values isolated in named constants
-Built to the confirmed **4 mm** analysis baseline throughout. Every value pending Reehana's hardware answers (Q3/Q7/Q8) is a named constant at the top of the file, so an unconfirmed item flips with a one-line edit — no teardown, no rebuild, no separate file:
+### Reversibility — hardware values isolated in named constants
+Built to the confirmed **4 mm** analysis baseline throughout. Steve confirmed the hardware answers (Q3/Q7/Q8, Jun 9 2026); every hardware-dependent value is a named constant at the top of the file, so any later revision is a one-line edit — no teardown, no rebuild, no separate file:
 
 | Constant | Value | Status |
 |---|---|---|
-| `WFR_ANALYSIS_DIA` | 4.0 mm | Confirmed (Steve, Jun 2026) |
-| `WFR_SIXMM_PROVISIONAL` | true | Provisional — shows 6 mm columns + amber "Provisional" tag; flip false to hide |
-| `WFR_ZERNIKE_MAX_ORDER` / `WFR_ZERNIKE_MODES` | 10 / 66 | Stated (lenslet-limited) |
-| `WFR_VERTEX_MM` | 25–30 mm | Not final (Reehana) |
-| `WFR_SPHERE_RANGE` / `WFR_CYL_RANGE` | placeholders | Q8 returned blank — pending |
+| `WFR_REEHANA_CONFIRMED` | true | Confirmed (Steve, Q3/Q7/Q8) — no provisional hedging shown |
+| `WFR_ANALYSIS_DIA` | 4.0 mm | Confirmed (Steve) |
+| `WFR_SIXMM_PROVISIONAL` | true | Confirmed (Steve, Q3) — 6 mm columns shown |
+| `WFR_ZERNIKE_MAX_ORDER` / `WFR_ZERNIKE_MODES` | 10 / 66 | Confirmed (Steve, Q7) — lenslet-limited |
+| `WFR_VERTEX_MM` | 25–30 mm | Confirmed (Steve) |
+| `WFR_SPHERE_RANGE` / `WFR_CYL_RANGE` | −14/+14 D · 0/−5 D | Confirmed (Steve, Q8 spec sheet) |
 
 ### Open
 - Pass/fail acuity threshold for the subjective endpoint (Gary to validate).
 - `Certify & close` → Rx-release system event wiring (MPR).
-- Reehana Q3/Q7/Q8 confirmations (6 mm pupil, vertex range, Rx ranges) before the provisional surfaces are promoted.
 - Patient-facing headset view (out of scope for this component).
 
 *This program remains pre-beta, active development pending final feedback from MPR and Xenon's Chief Medical Officer + doctor panel. v0.2.7 is the integration version, not a finished milestone.*

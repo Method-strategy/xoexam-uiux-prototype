@@ -22,7 +22,7 @@ Tests not listed in this guide are at **visual placeholder fidelity**: the UI lo
 
 ---
 
-## Scope of clinical fidelity in v0.2.7
+## Scope of clinical fidelity in v0.2.8
 
 > The xoExam UI/UX ships as one unified build. The right-hand column records *when each test last reached clinical fidelity*, not a separate version number per test.
 
@@ -288,11 +288,11 @@ Benchmarked against the Marco OPD-Scan III and Reichert Phoroptor VRx. Every add
 1. **PSF + simulated-VA before/after** — point-spread-function render and simulated acuity from the Zernike set, habitual Rx vs. new Rx.
 2. **Binocular balance** — added after both eyes via fogging / alternate occlusion (no prism hardware required).
 3. **Multi-source Rx comparison** — objective, subjective, habitual, and unaided side by side with spherical-equivalent deltas.
-4. **Photopic vs. mesopic (day & night) refraction** — 4 mm analysis (hardware-confirmed) plus a provisional 6 mm column and a night-shift Diff row.
+4. **Photopic vs. mesopic (day & night) refraction** — 4 mm analysis plus a 6 mm column (both hardware-confirmed) and a night-shift Diff row.
 5. **Smart-Cylinder auto-bracketing** — the JCC step size auto-sizes to the cylinder magnitude and narrows after each reversal.
 6. **Refraction-based progression tracker** — spherical-equivalent trend over visits and D/year vs. age-banded reference; the at-risk determination is left to the clinician.
 
-> **Provisional pending hardware confirmation (Reehana, Q3/Q7/Q8).** The 6 mm pupil columns, vertex distance (25–30 mm), and sphere/cylinder ranges are flagged provisional in the UI and isolated in named constants. Built to the confirmed 4 mm baseline; the provisional surfaces flip off with a one-line change if not confirmed.
+> **Hardware values confirmed (Steve, Q3/Q7/Q8).** The 6 mm pupil columns, vertex distance (25–30 mm), and sphere/cylinder ranges (sphere −14 to +14 D, cylinder 0 to −5 D) are confirmed and isolated in named constants. Built to the confirmed 4 mm analysis baseline; any later hardware revision is a one-line change.
 
 ### What's implemented
 - **Two-stage flow** mapped onto the shared three-phase framework:
@@ -382,4 +382,4 @@ These will be brought to clinical fidelity in priority order. The clinical evalu
 
 This document is updated at each clinical-fidelity milestone. If the clinical evaluation team identifies a deviation from current published standards, please flag it for the next revision. Contact Method Marketing Agency through the standard project channels.
 
-*Method Marketing Agency · xoExam UI/UX Clinical Standards Reference · v0.2.7 · June 8, 2026*
+*Method Marketing Agency · xoExam UI/UX Clinical Standards Reference · v0.2.8 · June 9, 2026*
