@@ -610,6 +610,8 @@ function DoctorsPage({ tweaks }) {
   const [menuOpen, setMenuOpen] = React.useState(null);
   const [sortBy, setSortBy] = React.useState('name');
   const [sortMenuOpen, setSortMenuOpen] = React.useState(false);
+  const [view, setView] = React.useState(() => localStorage.getItem('xoexam_doctors_view') || 'grid');
+  React.useEffect(() => { localStorage.setItem('xoexam_doctors_view', view); }, [view]);
 
   const filtered = DOCTORS.filter(d => !search ||
     d.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -667,6 +669,14 @@ function DoctorsPage({ tweaks }) {
               </div>
             )}
           </div>
+          <div style={{ display:'flex', gap:2, padding:3, background:'#f3f4f6', borderRadius:9, border:'1.5px solid #e5e7eb' }}>
+            {[['list','List','M3 5h18M3 12h18M3 19h18'],['grid','Grid','M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z']].map(([id,label,d]) => (
+              <button key={id} onClick={()=>setView(id)} title={`${label} view`} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:7, border:'none', cursor:'pointer', background:view===id?'#fff':'transparent', color:view===id?accent:'#9ca3af', fontSize:11, fontWeight:700, fontFamily:"'Nunito Sans', sans-serif", boxShadow:view===id?'0 1px 3px rgba(0,0,0,0.08)':'none', transition:'all 0.15s' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={id==='list'?2:1.8} strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>
+                {label}
+              </button>
+            ))}
+          </div>
           <button style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'none', background:`linear-gradient(135deg,${accent},#155bcc)`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Nunito Sans', sans-serif", boxShadow:`0 3px 12px ${accent}40` }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
             Add Doctor
@@ -716,6 +726,7 @@ function DoctorsPage({ tweaks }) {
       </div>
 
       {/* Doctor grid */}
+      {view === 'grid' && (
       <div style={{ flex:1, display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))', gap:14, alignContent:'start' }}>
         {sorted.length === 0 && (
           <div style={{ gridColumn:'1/-1', textAlign:'center', padding:48, color:'#9ca3af', fontSize:12, fontWeight:300 }}>
@@ -789,6 +800,62 @@ function DoctorsPage({ tweaks }) {
           </div>
         ))}
       </div>
+      )}
+
+      {/* Doctor list (table) */}
+      {view === 'list' && (
+      <div style={{ flex:1, background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', overflow:'hidden', alignSelf:'start', width:'100%' }}>
+        {/* Table header */}
+        <div style={{ display:'grid', gridTemplateColumns:'1.6fr 1.2fr 1.4fr 90px 1fr 90px 36px', gap:12, background:'#f9fafb', borderBottom:'1.5px solid #e5e7eb', padding:'11px 18px', alignItems:'center' }}>
+          {['Doctor','Specialty','Department','Exp.','Status','Patients',''].map((h,i) => <span key={i} style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.07em' }}>{h}</span>)}
+        </div>
+        {sorted.length === 0 && (
+          <div style={{ padding:'40px 20px', textAlign:'center', color:'#9ca3af', fontSize:12, fontWeight:300 }}>No doctors found matching your search.</div>
+        )}
+        {sorted.map((doc,i) => (
+          <div key={doc.id} onClick={()=>setSelected(doc)}
+            style={{ display:'grid', gridTemplateColumns:'1.6fr 1.2fr 1.4fr 90px 1fr 90px 36px', gap:12, alignItems:'center', padding:'12px 18px', borderBottom:i<sorted.length-1?'1px solid #f3f4f6':'none', cursor:'pointer', transition:'background 0.15s', position:'relative' }}
+            onMouseEnter={e=>e.currentTarget.style.background='#f9fafb'}
+            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+              <div style={{ width:34, height:34, borderRadius:'50%', background:`linear-gradient(135deg,${accent},#155bcc)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'white', flexShrink:0 }}>{doc.initials}</div>
+              <div style={{ minWidth:0 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                  <span style={{ fontSize:13, fontWeight:700, color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{doc.name}</span>
+                  {doc.isMe && <span style={{ fontSize:8, fontWeight:700, padding:'2px 5px', borderRadius:4, background:`${accent}15`, color:accent, textTransform:'uppercase', letterSpacing:'0.08em', flexShrink:0 }}>You</span>}
+                </div>
+                <div style={{ fontSize:11, fontWeight:300, color:'#9ca3af' }}>{doc.qual} · {doc.license}</div>
+              </div>
+            </div>
+            <span style={{ fontSize:12, fontWeight:300, color:'#374151', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{doc.specialty}</span>
+            <span style={{ fontSize:12, fontWeight:300, color:'#374151', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{doc.dept}</span>
+            <span style={{ fontSize:12, fontWeight:700, color:'#111827' }}>{doc.exp} yrs</span>
+            <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+              <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:20, background: doc.status==='Active'?'#dcfce7':'#fef3c7', color: doc.status==='Active'?'#16a34a':'#d97706', textTransform:'uppercase', letterSpacing:'0.06em' }}>{doc.status}</span>
+            </div>
+            <span style={{ fontSize:12, fontWeight:700, color:accent }}>{doc.patients}</span>
+            <div style={{ position:'relative', justifySelf:'end' }}>
+              <button onClick={e => { e.stopPropagation(); setMenuOpen(menuOpen===doc.id ? null : doc.id); }} style={{ width:28, height:28, borderRadius:6, border:'none', background:'transparent', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+              </button>
+              {menuOpen===doc.id && (
+                <div style={{ position:'absolute', top:32, right:0, background:'#fff', borderRadius:9, border:'1.5px solid #e5e7eb', boxShadow:'0 8px 24px rgba(0,0,0,0.1)', padding:6, minWidth:140, zIndex:5 }} onClick={e => e.stopPropagation()}>
+                  {[
+                    ['View Profile', () => { setSelected(doc); setMenuOpen(null); }],
+                    ['Edit Details', () => setMenuOpen(null)],
+                    ['View Schedule', () => { setSelected(doc); setMenuOpen(null); }],
+                  ].map(([label, fn]) => (
+                    <button key={label} onClick={fn} style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 12px', border:'none', background:'transparent', color:'#374151', fontSize:12, fontWeight:300, cursor:'pointer', borderRadius:6, fontFamily:"'Nunito Sans', sans-serif" }}
+                      onMouseEnter={e => e.currentTarget.style.background='#f9fafb'}
+                      onMouseLeave={e => e.currentTarget.style.background='transparent'}>{label}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      )}
     </div>
   );
 }

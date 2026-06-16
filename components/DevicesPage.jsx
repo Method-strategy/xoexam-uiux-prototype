@@ -98,6 +98,8 @@ function DevicesPage({ tweaks, onNavigate }) {
   const accent = tweaks?.accentColor || '#1f8eff';
   const [filter, setFilter] = React.useState('All');
   const [selected, setSelected] = React.useState(null);
+  const [view, setView] = React.useState(() => localStorage.getItem('xoexam_devices_view') || 'grid');
+  React.useEffect(() => { localStorage.setItem('xoexam_devices_view', view); }, [view]);
 
   const counts = {
     All: DEVICES.length,
@@ -123,7 +125,15 @@ function DevicesPage({ tweaks, onNavigate }) {
           <h1 style={{ fontSize:20, fontWeight:700, color:'#111827', margin:0 }}>Device Management</h1>
           <p style={{ fontSize:12, fontWeight:300, color:'#6b7280', margin:'3px 0 0' }}>Monitor and manage your xoExam diagnostic headsets</p>
         </div>
-        <div style={{ display:'flex', gap:10 }}>
+        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+          <div style={{ display:'flex', gap:2, padding:3, background:'#f3f4f6', borderRadius:9, border:'1.5px solid #e5e7eb' }}>
+            {[['list','List','M3 5h18M3 12h18M3 19h18'],['grid','Grid','M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z']].map(([id,label,d]) => (
+              <button key={id} onClick={()=>setView(id)} title={`${label} view`} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:7, border:'none', cursor:'pointer', background:view===id?'#fff':'transparent', color:view===id?accent:'#9ca3af', fontSize:11, fontWeight:700, fontFamily:"'Nunito Sans', sans-serif", boxShadow:view===id?'0 1px 3px rgba(0,0,0,0.08)':'none', transition:'all 0.15s' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={id==='list'?2:1.8} strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>
+                {label}
+              </button>
+            ))}
+          </div>
           <button onClick={() => onNavigate('calibration')} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:9, border:`1.5px solid ${accent}`, background:`${accent}10`, color:accent, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Nunito Sans', sans-serif" }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
             Calibrate
@@ -155,11 +165,58 @@ function DevicesPage({ tweaks, onNavigate }) {
       </div>
 
       {/* Grid */}
+      {view === 'grid' && (
       <div style={{ flex:1, overflowY:'auto', display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:12, alignContent:'start' }}>
         {filtered.map(device => (
           <DeviceCard key={device.id} device={device} accent={accent} onClick={() => setSelected(device)}/>
         ))}
       </div>
+      )}
+
+      {/* List (table) */}
+      {view === 'list' && (
+      <div style={{ flex:1, overflowY:'auto' }}>
+        <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', overflow:'hidden' }}>
+          {/* Table header */}
+          <div style={{ display:'grid', gridTemplateColumns:'1.4fr 110px 1fr 96px 70px 110px', gap:12, background:'#f9fafb', borderBottom:'1.5px solid #e5e7eb', padding:'10px 18px' }}>
+            {['Device','Status','Current Exam','Battery','Uptime','Next Cal'].map(h => <span key={h} style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.07em' }}>{h}</span>)}
+          </div>
+          {filtered.length === 0 && (
+            <div style={{ padding:'40px 20px', textAlign:'center', color:'#9ca3af', fontSize:13 }}>No devices match this filter.</div>
+          )}
+          {filtered.map((device,i) => {
+            const cfg = STATUS_CONFIG[device.status];
+            return (
+              <div key={device.id}
+                onClick={() => setSelected(device)}
+                style={{ display:'grid', gridTemplateColumns:'1.4fr 110px 1fr 96px 70px 110px', alignItems:'center', gap:12, padding:'12px 18px', borderBottom:i<filtered.length-1?'1px solid #f3f4f6':'none', cursor:'pointer', transition:'background 0.15s' }}
+                onMouseEnter={e=>e.currentTarget.style.background='#f9fafb'}
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{device.name}</div>
+                  <div style={{ fontSize:11, fontWeight:300, color:'#9ca3af' }}>{device.serial} · {device.location}</div>
+                </div>
+                <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 8px', borderRadius:20, background:cfg.bg, justifySelf:'start' }}>
+                  <div style={{ width:6, height:6, borderRadius:'50%', background:cfg.dot, animation: device.status==='connected' ? 'pulse 1.2s infinite' : 'none' }}/>
+                  <span style={{ fontSize:9, fontWeight:700, color:cfg.color, letterSpacing:'0.08em' }}>{cfg.label}</span>
+                </div>
+                <div>
+                  {device.patient ? (
+                    <div>
+                      <div style={{ fontSize:12, fontWeight:700, color:'#111827' }}>{device.patient}</div>
+                      <div style={{ fontSize:11, fontWeight:300, color:'#6b7280' }}>{device.examType} · {device.examDuration}</div>
+                    </div>
+                  ) : <span style={{ fontSize:12, fontWeight:300, color:'#9ca3af' }}>— Idle</span>}
+                </div>
+                <BatteryBar level={device.battery}/>
+                <span style={{ fontSize:12, fontWeight:700, color:'#111827' }}>{device.uptime}%</span>
+                <span style={{ fontSize:11, fontWeight:700, color: device.nextCalibration==='OVERDUE' ? '#ef4444' : '#6b7280' }}>{device.nextCalibration}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      )}
 
       {/* Detail modal */}
       {selected && (

@@ -375,6 +375,8 @@ function PatientsPage({ tweaks, onNavigate }) {
   const [filterPhase, setFilterPhase] = React.useState('All');
   const [selectedPatient, setSelectedPatient] = React.useState(null);
   const [showAddForm, setShowAddForm] = React.useState(false);
+  const [view, setView] = React.useState(() => localStorage.getItem('xoexam_patients_view') || 'list');
+  React.useEffect(() => { localStorage.setItem('xoexam_patients_view', view); }, [view]);
 
   const filtered = PATIENTS.filter(p => {
     const matchSearch = search==='' || p.name.toLowerCase().includes(search.toLowerCase()) || p.patientId.toLowerCase().includes(search.toLowerCase()) || p.diagnosis.toLowerCase().includes(search.toLowerCase());
@@ -393,7 +395,15 @@ function PatientsPage({ tweaks, onNavigate }) {
           <div style={{ fontSize:20, fontWeight:700, color:'#111827' }}>Patients</div>
           <div style={{ fontSize:12, fontWeight:300, color:'#6b7280' }}>{PATIENTS.length} total · {PATIENTS.filter(p=>p.status==='Active').length} active</div>
         </div>
-        <div style={{ display:'flex', gap:10 }}>
+        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+          <div style={{ display:'flex', gap:2, padding:3, background:'#f3f4f6', borderRadius:9, border:'1.5px solid #e5e7eb' }}>
+            {[['list','List','M3 5h18M3 12h18M3 19h18'],['grid','Grid','M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z']].map(([id,label,d]) => (
+              <button key={id} onClick={()=>setView(id)} title={`${label} view`} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:7, border:'none', cursor:'pointer', background:view===id?'#fff':'transparent', color:view===id?accent:'#9ca3af', fontSize:11, fontWeight:700, fontFamily:"'Nunito Sans', sans-serif", boxShadow:view===id?'0 1px 3px rgba(0,0,0,0.08)':'none', transition:'all 0.15s' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={id==='list'?2:1.8} strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>
+                {label}
+              </button>
+            ))}
+          </div>
           <button onClick={() => setShowAddForm(true)} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:`linear-gradient(135deg,${accent},#155bcc)`, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Nunito Sans', sans-serif", display:'flex', alignItems:'center', gap:6 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
             Add Patient
@@ -417,7 +427,8 @@ function PatientsPage({ tweaks, onNavigate }) {
         ))}
       </div>
 
-      {/* Patient list */}
+      {/* Patient list (table) */}
+      {view === 'list' && (
       <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', overflow:'hidden' }}>
         {/* Table header */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 120px 140px 120px 100px 80px', gap:0, background:'#f9fafb', borderBottom:'1.5px solid #e5e7eb', padding:'10px 20px' }}>
@@ -448,6 +459,54 @@ function PatientsPage({ tweaks, onNavigate }) {
           </div>
         ))}
       </div>
+      )}
+
+      {/* Patient grid (cards) */}
+      {view === 'grid' && (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:16 }}>
+          {filtered.length === 0 && (
+            <div style={{ gridColumn:'1/-1', padding:'40px 20px', textAlign:'center', color:'#9ca3af', fontSize:13, background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb' }}>No patients match your search.</div>
+          )}
+          {filtered.map(p => (
+            <div key={p.id}
+              onClick={() => setSelectedPatient(p)}
+              style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:18, cursor:'pointer', transition:'all 0.15s', display:'flex', flexDirection:'column', gap:14 }}
+              onMouseEnter={e=>{ e.currentTarget.style.borderColor=accent; e.currentTarget.style.boxShadow=`0 4px 16px ${accent}1a`; e.currentTarget.style.transform='translateY(-2px)'; }}
+              onMouseLeave={e=>{ e.currentTarget.style.borderColor='#e5e7eb'; e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none'; }}>
+              {/* Top: avatar + identity */}
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <div style={{ width:48, height:48, borderRadius:'50%', background:`linear-gradient(135deg,${accent}80,${accent})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, fontWeight:700, color:'white', flexShrink:0 }}>{p.initials}</div>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:'#111827', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
+                  <div style={{ fontSize:11, fontWeight:300, color:'#6b7280' }}>{p.patientId} · Age {p.age}</div>
+                </div>
+              </div>
+
+              {/* Status badges */}
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                <StatusBadge status={p.status}/>
+                <StatusBadge status={p.phase}/>
+              </div>
+
+              {/* Details */}
+              <div style={{ display:'flex', flexDirection:'column', gap:8, paddingTop:12, borderTop:'1px solid #f3f4f6' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
+                  <span style={{ fontSize:11, fontWeight:300, color:'#9ca3af' }}>Diagnosis</span>
+                  <span style={{ fontSize:12, fontWeight:700, color:'#374151', textAlign:'right' }}>{p.diagnosis}</span>
+                </div>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
+                  <span style={{ fontSize:11, fontWeight:300, color:'#9ca3af' }}>Last Visit</span>
+                  <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>{p.lastVisit}</span>
+                </div>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
+                  <span style={{ fontSize:11, fontWeight:300, color:'#9ca3af' }}>Physician</span>
+                  <span style={{ fontSize:12, fontWeight:700, color:'#374151', textAlign:'right', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:140 }}>{p.doctor}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Add patient modal */}
       {showAddForm && (

@@ -239,9 +239,9 @@ function DashboardShell({ activeSection, onNavigate, onLogout, children, tweaks 
               const isActive = activeSection === item.id ||
                 (item.id === 'devices' && activeSection?.startsWith('devices')) ||
                 (item.id === 'patients' && activeSection?.startsWith('patients'));
-              const hasSubmenu = item.id === 'devices' || item.id === 'patients';
-              const submenuOpen = item.id === 'devices' ? devicesOpen : item.id === 'patients' ? patientsOpen : false;
-              const toggleSubmenu = item.id === 'devices' ? () => setDevicesOpen(v=>!v) : item.id === 'patients' ? () => setPatientsOpen(v=>!v) : null;
+              const hasSubmenu = false;
+              const submenuOpen = false;
+              const toggleSubmenu = null;
 
               return (
                 <div key={item.id} style={{ marginBottom:1 }}>
