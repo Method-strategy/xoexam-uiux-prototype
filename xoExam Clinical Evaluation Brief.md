@@ -8,7 +8,7 @@
 >
 > This is not a regulatory submission, a clinical validation report, or a substitute for instrument calibration. It is a transparency document — what the design adheres to, so a clinician can evaluate it against current published standards.
 >
-> **v0.3.0 note — test-catalog visibility/ordering release, no clinical change.** v0.3.0 reorders the Tests selection grid to lead with a fixed clinical priority sequence and hides the legacy standalone Refraction placeholder from the catalog (the combined Wavefront Refraction supersedes it; code retained and restorable). No exam component, clinical algorithm, or report was modified; the clinical content below is unchanged from v0.2.8. The brief is reissued only to keep the doc set on one unified version.
+> **v0.3.0 note — test-catalog visibility/ordering release, no clinical change.** v0.3.0 reorders the Tests selection grid to lead with a fixed clinical priority sequence and hides the legacy standalone Refraction placeholder from the catalog (the combined Wavefront Refraction supersedes it; code retained and restorable), and also hides the Tests-page category filter, per-card category labels, and search box (restorable). No exam component, clinical algorithm, or report was modified; the clinical content below is unchanged from v0.2.8. The brief is reissued only to keep the doc set on one unified version.
 
 ---
 

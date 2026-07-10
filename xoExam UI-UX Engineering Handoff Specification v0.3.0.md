@@ -1,5 +1,5 @@
 # xoExam™ UI/UX — Engineering Handoff Specification
-## v0.3.0 · July 10, 2026 · Test catalog visibility + ordering pass
+## v0.3.0 · July 10, 2026 · Test catalog visibility, ordering + filtering pass
 
 **Method Marketing Agency for Xenon Ophthalmics Inc.**
 
@@ -12,8 +12,9 @@ This reissue records a test-catalog visibility/ordering pass; **no test was adde
 1. **Tests grid reordered.** `components/TestSelection.jsx` now leads with a fixed clinical priority sequence — Wavefront Refraction → Visual Acuity → Wavefront Aberrometry → Color Vision → Visual Field → Extraocular Motility → Pupillometry — with all remaining tests following in their prior order. Only the `EXAM_TYPES` array order changed; each entry keeps its `category`, so the category-filter chips still group by category.
 2. **Legacy standalone "Refraction" hidden from the catalog.** The plain Refraction test is removed from the Tests grid (`TestSelection.jsx`) and the patient Start-New-Test launcher (`PatientsPage.jsx`, `PATIENT_EXAM_TYPES`). The combined **Wavefront Refraction** supersedes it for the refraction workflow. The component and its routing case in `index.html` are retained (catalog entries commented, tagged "HIDDEN (Jul 2026, CD request)"), so it is restorable by uncommenting.
 3. **Wavefront Aberrometry retained across all catalogs** (Tests grid, patient launcher, Manual Control launcher).
-4. **Version numbering.** Bumped v0.2.9 → **v0.3.0** — a minor bump rather than v0.2.10, because this is user-facing catalog behavior and reads unambiguously alongside the existing v0.2.1.
-5. **Doc set reissued at v0.3.0.** This specification, the Development Brief (07-10-2026 v0.3.0), the Clinical Standards Reference, the Clinical Evaluation Brief, `CLAUDE.md`, `README.md`, and the `_dist_v0.3.0/` package are brought to v0.3.0 together. The clinical documents carry a no-clinical-change note for this release.
+4. **Tests-page filtering UI hidden.** The category filter pills, the per-card category subheads, and the search box in `TestSelection.jsx` are hidden behind a `SHOW_FILTERS = false` flag (restorable) — the short catalog no longer needs filtering or search.
+5. **Version numbering.** Bumped v0.2.9 → **v0.3.0** — a minor bump rather than v0.2.10, because this is user-facing catalog behavior and reads unambiguously alongside the existing v0.2.1.
+6. **Doc set reissued at v0.3.0.** This specification, the Development Brief (07-10-2026 v0.3.0), the Clinical Standards Reference, the Clinical Evaluation Brief, `CLAUDE.md`, `README.md`, and the `_dist_v0.3.0/` package are brought to v0.3.0 together. The clinical documents carry a no-clinical-change note for this release.
 
 ---
 
@@ -301,7 +302,7 @@ The remaining 12 tests are visual-fidelity placeholders. Specs are written as ea
 | **v0.2.7** | **June 8, 2026** | **Wavefront Refraction — six competitive-parity enhancements merged into the single production file; `v2` fork eliminated** |
 | **v0.2.8** | **June 9, 2026** | **Hardware answers confirmed (Steve, Q3/Q7/Q8) — 4 & 6 mm pupil, Zernike 10/66, vertex 25–30 mm, sphere −14/+14 D, cylinder 0/−5 D; Smart-Cylinder & binocular toggle-switch fix; full doc-set reissue** |
 | **v0.2.9** | **June 16, 2026** | **Shell navigation + list/grid view pass — sidebar sub-menus removed; List/Grid view toggle added to Patients, Devices, Doctors; no test or clinical change** |
-| **v0.3.0** | **July 10, 2026** | **Test catalog visibility + ordering pass — Tests grid reordered to a fixed clinical priority sequence; legacy standalone Refraction hidden from the catalog; no test or clinical change** |
+| **v0.3.0** | **July 10, 2026** | **Test catalog visibility, ordering + filtering pass — Tests grid reordered to a fixed clinical priority sequence; legacy standalone Refraction hidden from the catalog; Tests-page filter pills / category labels / search hidden; no test or clinical change** |
 
 Older versioned specs are retained in the repository so spec evolution is traceable for MPR / regulatory audit.
 

@@ -46,6 +46,9 @@ function TestSelection({ onSelectExam, tweaks }) {
   const [hovered, setHovered] = React.useState(null);
   const [searchFocused, setSearchFocused] = React.useState(false);
 
+  // Filtering UI hidden at CD request (Jul 2026) — flip to true to restore the category filter pills + the per-card category subheads.
+  const SHOW_FILTERS = false;
+
   const filtered = EXAM_TYPES.filter(e => {
     const matchCat = activeCategory === 'All' || e.category === activeCategory;
     const matchSearch = !search || e.name.toLowerCase().includes(search.toLowerCase()) || e.category.toLowerCase().includes(search.toLowerCase());
@@ -62,6 +65,7 @@ function TestSelection({ onSelectExam, tweaks }) {
           <p style={{ fontSize:12, fontWeight:300, color:'#6b7280', margin:'3px 0 0' }}>{EXAM_TYPES.length} tests available · Select one to begin</p>
         </div>
         {/* Search */}
+        {SHOW_FILTERS && (
         <div style={{ position:'relative' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}>
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
@@ -76,9 +80,11 @@ function TestSelection({ onSelectExam, tweaks }) {
             }}
           />
         </div>
+        )}
       </div>
 
       {/* Category Pills */}
+      {SHOW_FILTERS && (
       <div style={{ display:'flex', gap:8, flexWrap:'wrap', flexShrink:0 }}>
         {CATEGORIES.map(cat => {
           const isActive = cat === activeCategory;
@@ -94,6 +100,7 @@ function TestSelection({ onSelectExam, tweaks }) {
           );
         })}
       </div>
+      )}
 
       {/* Grid */}
       <div style={{
@@ -128,7 +135,7 @@ function TestSelection({ onSelectExam, tweaks }) {
               {/* Name */}
               <div>
                 <div style={{ fontSize:12, fontWeight:700, color:'#111827', lineHeight:1.3 }}>{exam.name}</div>
-                <div style={{ fontSize:10, fontWeight:300, color:'#9ca3af', marginTop:3, textTransform:'uppercase', letterSpacing:'0.07em' }}>{exam.category}</div>
+                {SHOW_FILTERS && <div style={{ fontSize:10, fontWeight:300, color:'#9ca3af', marginTop:3, textTransform:'uppercase', letterSpacing:'0.07em' }}>{exam.category}</div>}
               </div>
 
               {/* Arrow */}

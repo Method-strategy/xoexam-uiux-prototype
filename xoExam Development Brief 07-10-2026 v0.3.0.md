@@ -1,5 +1,5 @@
 # xoExam™ — Development Brief
-## v0.3.0 · July 10, 2026 · Test catalog visibility + ordering pass
+## v0.3.0 · July 10, 2026 · Test catalog visibility, ordering + filtering pass
 
 **Method Marketing Agency for Xenon Ophthalmics Inc.**
 
@@ -7,10 +7,11 @@
 
 ## What changed in v0.3.0
 
-Two connected test-catalog corrections at CD direction. **No test was added, no clinical logic was touched.** The count of tests at clinical fidelity is unchanged — **7 of 19**.
+Three connected Tests-page corrections at CD direction. **No test was added, no clinical logic was touched.** The count of tests at clinical fidelity is unchanged — **7 of 19**.
 
 1. **Tests grid reordered.** The Tests selection grid now leads with a fixed clinical priority sequence: **Wavefront Refraction → Visual Acuity → Wavefront Aberrometry → Color Vision → Visual Field → Extraocular Motility → Pupillometry.** All remaining tests follow in their prior order.
 2. **Legacy standalone "Refraction" hidden.** The plain Refraction test is hidden from the Tests grid and the patient Start-New-Test launcher. The combined **Wavefront Refraction** supersedes it for the refraction workflow. Component and routing are retained in code and fully restorable.
+3. **Tests-page filtering hidden.** The category filter pills, the per-card uppercase category subheads, and the search box are hidden behind a `SHOW_FILTERS = false` flag on `TestSelection.jsx` — the short catalog doesn't need filtering or search. Restorable by flipping the flag.
 
 ---
 
@@ -42,7 +43,7 @@ Nothing clinical changed. No exam component, algorithm, scale, report, or doctor
 
 | File | Change |
 |---|---|
-| `components/TestSelection.jsx` | **Edited** — `EXAM_TYPES` reordered to the seven-test priority sequence; `refraction` entry commented out (hidden). |
+| `components/TestSelection.jsx` | **Edited** — `EXAM_TYPES` reordered to the seven-test priority sequence; `refraction` entry commented out (hidden); category filter pills, per-card category subheads, and search box hidden behind `SHOW_FILTERS`. |
 | `components/PatientsPage.jsx` | **Edited** — `refraction` removed from `PATIENT_EXAM_TYPES` (patient launcher). |
 | `index.html` | **Edited** — title bumped to v0.3.0. No routing change. |
 | `deploy.html` | **Edited** — version strings bumped to v0.3.0. |

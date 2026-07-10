@@ -4,7 +4,7 @@
 
 ---
 
-> **v0.3.0 note — test-catalog visibility/ordering release, no clinical change.** v0.3.0 reorders the Tests selection grid to lead with a fixed clinical priority sequence (Wavefront Refraction → Visual Acuity → Wavefront Aberrometry → Color Vision → Visual Field → Extraocular Motility → Pupillometry) and hides the legacy standalone **Refraction** placeholder from the catalog and patient launcher (the combined Wavefront Refraction supersedes it; the component and routing are retained and restorable). No exam component, clinical algorithm, scale, scoring rule, reference standard, or report was modified. Every clinical detail in this document is unchanged from v0.2.8; the document is reissued only to keep the doc set on one unified version per the project's versioning rule.
+> **v0.3.0 note — test-catalog visibility/ordering release, no clinical change.** v0.3.0 reorders the Tests selection grid to lead with a fixed clinical priority sequence (Wavefront Refraction → Visual Acuity → Wavefront Aberrometry → Color Vision → Visual Field → Extraocular Motility → Pupillometry) and hides the legacy standalone **Refraction** placeholder from the catalog and patient launcher (the combined Wavefront Refraction supersedes it; the component and routing are retained and restorable), and also hides the Tests-page category filter, the per-card category labels, and the search box (short catalog — filtering and search not needed; restorable). No exam component, clinical algorithm, scale, scoring rule, reference standard, or report was modified. Every clinical detail in this document is unchanged from v0.2.8; the document is reissued only to keep the doc set on one unified version per the project's versioning rule.
 
 ---
 
