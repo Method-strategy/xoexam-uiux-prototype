@@ -41,7 +41,8 @@ const PATIENT_EXAM_TYPES = [
   { id:'contrast-sensitivity', name:'Contrast Sensitivity' },
   { id:'extraocular-motility', name:'Extraocular Motility' },
   { id:'pupillometry', name:'Pupillometry' },
-  { id:'refraction', name:'Refraction' },
+  // HIDDEN (Jul 2026, CD request) — uncomment to restore.
+  // { id:'refraction', name:'Refraction' },
   { id:'binocular-vision', name:'Binocular Vision' },
   { id:'accommodation', name:'Accommodation' },
   { id:'convergence', name:'Convergence' },

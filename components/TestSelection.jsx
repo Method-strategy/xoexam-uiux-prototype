@@ -2,28 +2,32 @@
 // TestSelection.jsx — Exam type grid
 
 const EXAM_TYPES = [
-  // Refraction
-  { id:'refraction',               name:'Refraction',                   category:'Refraction',      color:'#1f8eff', iconPath:'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z' },
-  { id:'aberrometer',              name:'Wavefront Aberrometry',        category:'Refraction',      color:'#ec4899', iconPath:'M13 10V3L4 14h7v7l9-11h-7z' },
+  // ── Priority order (Jul 2026, CD request) — these seven lead the catalog, in this exact sequence.
   { id:'wavefront-refraction',     name:'Wavefront Refraction',         category:'Refraction',      color:'#1f8eff', iconPath:'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z' },
+  { id:'visual-acuity',            name:'Visual Acuity',                category:'Sensory',         color:'#1f8eff', iconPath:'M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z' },
+  { id:'aberrometer',              name:'Wavefront Aberrometry',        category:'Refraction',      color:'#ec4899', iconPath:'M13 10V3L4 14h7v7l9-11h-7z' },
+  { id:'color-vision',             name:'Color Vision',                 category:'Sensory',         color:'#05c1bc', iconPath:'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01' },
+  { id:'visual-field',             name:'Visual Field',                 category:'Visual Field',    color:'#155bcc', iconPath:'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' },
+  { id:'extraocular-motility',     name:'Extraocular Motility',         category:'Binocular',       color:'#f59e0b', iconPath:'M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4' },
+  { id:'pupillometry',             name:'Pupillometry',                 category:'Neuro',           color:'#8b5cf6', iconPath:'M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
+
+  // ── Remaining tests (existing order) ──
+  // Refraction
+  // HIDDEN (Jul 2026, CD request) — component + routing kept intact; uncomment to restore to the catalog.
+  // { id:'refraction',               name:'Refraction',                   category:'Refraction',      color:'#1f8eff', iconPath:'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z' },
   { id:'accommodation',            name:'Accommodation',                category:'Refraction',      color:'#06b6d4', iconPath:'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z' },
   { id:'keratometry',              name:'Keratometry',                  category:'Refraction',      color:'#f97316', iconPath:'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7' },
   // Visual Field
-  { id:'visual-field',             name:'Visual Field',                 category:'Visual Field',    color:'#155bcc', iconPath:'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' },
   { id:'confrontation',            name:'Confrontation',                category:'Visual Field',    color:'#66ccff', iconPath:'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
   { id:'visual-field-estheryman',  name:'Esterman Binocular',           category:'Visual Field',    color:'#3b82f6', iconPath:'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7' },
   // Binocular
   { id:'binocular-vision',         name:'Binocular Vision',             category:'Binocular',       color:'#10b981', iconPath:'M4 6h16M4 10h16M4 14h16M4 18h16' },
   { id:'convergence',              name:'Convergence',                  category:'Binocular',       color:'#75d647', iconPath:'M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z' },
-  { id:'extraocular-motility',     name:'Extraocular Motility',         category:'Binocular',       color:'#f59e0b', iconPath:'M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4' },
   // ('Eyes Converging' was a clinical duplicate of Convergence and previously
   // mis-routed to Confrontation — removed in v0.2.0.)
   // Sensory
-  { id:'visual-acuity',            name:'Visual Acuity',                category:'Sensory',         color:'#1f8eff', iconPath:'M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z' },
-  { id:'color-vision',             name:'Color Vision',                 category:'Sensory',         color:'#05c1bc', iconPath:'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01' },
   { id:'contrast-sensitivity',     name:'Contrast Sensitivity',         category:'Sensory',         color:'#6366f1', iconPath:'M12 3v1m0 16v1M4.22 4.22l.707.707m12.728 12.728l.707.707M1 12h1m20 0h1M4.22 19.78l.707-.707M19.07 4.93l.707-.707' },
   // Neuro
-  { id:'pupillometry',             name:'Pupillometry',                 category:'Neuro',           color:'#8b5cf6', iconPath:'M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
   { id:'visual-reaction-time',     name:'Visual Reaction Time',         category:'Neuro',           color:'#ef4444', iconPath:'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
   { id:'eye-tracking',             name:'Eye Tracking Accuracy',        category:'Neuro',           color:'#1f8eff', iconPath:'M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z' },
   { id:'fixation-stability',       name:'Fixation Stability',           category:'Neuro',           color:'#a855f7', iconPath:'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },

@@ -8,7 +8,7 @@
 >
 > This is not a regulatory submission, a clinical validation report, or a substitute for instrument calibration. It is a transparency document — what the design adheres to, so a clinician can evaluate it against current published standards.
 >
-> **v0.2.9 note — shell/navigation release, no clinical change.** v0.2.9 is an administrative-shell pass (sidebar sub-menus removed; a List/Grid view toggle added to the Patients, Devices, and Doctors pages). No exam component, clinical algorithm, or report was modified; the clinical content below is unchanged from v0.2.8. The brief is reissued only to keep the doc set on one unified version.
+> **v0.3.0 note — test-catalog visibility/ordering release, no clinical change.** v0.3.0 reorders the Tests selection grid to lead with a fixed clinical priority sequence and hides the legacy standalone Refraction placeholder from the catalog (the combined Wavefront Refraction supersedes it; code retained and restorable). No exam component, clinical algorithm, or report was modified; the clinical content below is unchanged from v0.2.8. The brief is reissued only to keep the doc set on one unified version.
 
 ---
 
@@ -26,7 +26,7 @@ The seven clinically-faithful tests:
 6. Pupillometry
 7. Wavefront Refraction
 
-The remaining tests in the catalog await their own clinical rebuilds in subsequent releases. The entire UI/UX ships as one unified build — currently v0.2.9; a test reaching clinical fidelity in an earlier release is correct and unchanged since then, not running older software.
+The remaining tests in the catalog await their own clinical rebuilds in subsequent releases. The entire UI/UX ships as one unified build — currently v0.3.0; a test reaching clinical fidelity in an earlier release is correct and unchanged since then, not running older software.
 
 ---
 
@@ -310,4 +310,4 @@ Please return your observations through the standard project channels. The devel
 
 ---
 
-*Method Marketing Agency · xoExam UI/UX Clinical Evaluation Brief · v0.2.9 · June 16, 2026*
+*Method Marketing Agency · xoExam UI/UX Clinical Evaluation Brief · v0.3.0 · July 10, 2026*
