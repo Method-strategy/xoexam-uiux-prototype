@@ -4,6 +4,7 @@
 const EXAM_TYPES = [
   // ── Priority order (Jul 2026, CD request) — these seven lead the catalog, in this exact sequence.
   { id:'wavefront-refraction',     name:'Wavefront Refraction',         category:'Refraction',      color:'#1f8eff', iconPath:'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z' },
+  { id:'objective-subjective-refraction', name:'Objective & Subjective Refraction', category:'Refraction', color:'#1f8eff', iconPath:'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z' },
   { id:'visual-acuity',            name:'Visual Acuity',                category:'Sensory',         color:'#1f8eff', iconPath:'M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z' },
   { id:'aberrometer',              name:'Wavefront Aberrometry',        category:'Refraction',      color:'#ec4899', iconPath:'M13 10V3L4 14h7v7l9-11h-7z' },
   { id:'color-vision',             name:'Color Vision',                 category:'Sensory',         color:'#05c1bc', iconPath:'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01' },

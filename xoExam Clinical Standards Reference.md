@@ -1,10 +1,10 @@
 # xoExam™ UI/UX — Clinical Standards Reference
 ## A guide for the clinical team evaluating the prototype
-### Method Marketing Agency · July 2026 · Version 0.3.0
+### Method Marketing Agency · September 2026 · Version 0.3.2
 
 ---
 
-> **v0.3.0 note — test-catalog visibility/ordering release, no clinical change.** v0.3.0 reorders the Tests selection grid to lead with a fixed clinical priority sequence (Wavefront Refraction → Visual Acuity → Wavefront Aberrometry → Color Vision → Visual Field → Extraocular Motility → Pupillometry) and hides the legacy standalone **Refraction** placeholder from the catalog and patient launcher (the combined Wavefront Refraction supersedes it; the component and routing are retained and restorable), and also hides the Tests-page category filter, the per-card category labels, and the search box (short catalog — filtering and search not needed; restorable). No exam component, clinical algorithm, scale, scoring rule, reference standard, or report was modified. Every clinical detail in this document is unchanged from v0.2.8; the document is reissued only to keep the doc set on one unified version per the project's versioning rule.
+> **v0.3.2 note — subjective-refraction protocol brought into line with published technique.** v0.3.2 corrects the subjective protocol of **Objective & Subjective Refraction** against the Westmead Eye Manual §8.2: the sphere step now branches on accommodation (direct comparison at 60+ or pseudophakic, fogging protocol below 60, with the manual's +0.50 D / −0.25 D step asymmetry); the JCC fixation target is a round "O" two lines above best acuity; separate higher/lower cross-cylinder powers are used for axis and power; handle-vs-axis alignment is depicted; sphere compensation (0.25 D per 0.50 D cylinder) is applied to hold the circle of least confusion; an axis-midpoint endpoint is offered; the duochrome endpoint follows RAM-GAP and leaves the patient slightly on the red side; and near add follows habitual working distance as well as age. **Axis before power is confirmed unchanged.** No other test was modified and Wavefront Refraction itself is untouched; the count of tests at clinical fidelity is unchanged.
 
 ---
 
@@ -26,7 +26,7 @@ Tests not listed in this guide are at **visual placeholder fidelity**: the UI lo
 
 ---
 
-## Scope of clinical fidelity in v0.3.0
+## Scope of clinical fidelity in v0.3.2
 
 > The xoExam UI/UX ships as one unified build. The right-hand column records *when each test last reached clinical fidelity*, not a separate version number per test.
 
@@ -386,4 +386,4 @@ These will be brought to clinical fidelity in priority order. The clinical evalu
 
 This document is updated at each clinical-fidelity milestone. If the clinical evaluation team identifies a deviation from current published standards, please flag it for the next revision. Contact Method Marketing Agency through the standard project channels.
 
-*Method Marketing Agency · xoExam UI/UX Clinical Standards Reference · v0.3.0 · July 10, 2026*
+*Method Marketing Agency · xoExam UI/UX Clinical Standards Reference · v0.3.2 · September 18, 2026*
