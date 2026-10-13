@@ -8,7 +8,7 @@
 >
 > This is not a regulatory submission, a clinical validation report, or a substitute for instrument calibration. It is a transparency document — what the design adheres to, so a clinician can evaluate it against current published standards.
 >
-> **v0.3.2 note — subjective-refraction protocol aligned to published technique.** Building on v0.3.1's single-screen console, v0.3.2 corrects the subjective protocol of **Objective & Subjective Refraction** against the Westmead Eye Manual §8.2 — age-branched sphere protocol, round JCC target two lines above best acuity, separate axis/power cross-cylinder magnitudes, handle-vs-axis depiction, active sphere compensation, axis-midpoint endpoint, RAM-GAP duochrome endpoint, and working-distance-based near add. Axis before power is confirmed unchanged. **This is the clinical detail the panel is asked to review.** Wavefront Refraction is untouched.
+> **v0.3.3 note — binocular alignment, near vision and refraction-flow branching in Objective & Subjective Refraction.** Adds digital-prism alignment measurement (per-eye image displacement, BI/BO/BU/BD, dissociated vs associated method recorded; measured prism is recorded by default and enters the prescription only when the clinician elects to prescribe it); a near-vision workflow (linked add, locked distance Rx, near Rx, near acuity in Snellen-equivalent and M-units, contrast and lighting, convergence for working distance, NRA/PRA with centered add); a selectable 3- or 5-scan objective capture averaged in power-vector space with automatic rejection of spurious readings and recorded scan spread; and JCC entry branching on starting cylinder per standard refraction flow (axis first above 0.50 D, power first at or below 0.50 D, probe when no cylinder is present). Wavefront Refraction is untouched; the count of tests at clinical fidelity is unchanged. **The prism, near and JCC-branching workflow is the clinical detail the panel is asked to review.**
 
 ---
 
@@ -26,7 +26,7 @@ The seven clinically-faithful tests:
 6. Pupillometry
 7. Wavefront Refraction
 
-The remaining tests in the catalog await their own clinical rebuilds in subsequent releases. The entire UI/UX ships as one unified build — currently v0.3.2; a test reaching clinical fidelity in an earlier release is correct and unchanged since then, not running older software.
+The remaining tests in the catalog await their own clinical rebuilds in subsequent releases. The entire UI/UX ships as one unified build — currently v0.3.3; a test reaching clinical fidelity in an earlier release is correct and unchanged since then, not running older software.
 
 ---
 
@@ -310,4 +310,4 @@ Please return your observations through the standard project channels. The devel
 
 ---
 
-*Method Marketing Agency · xoExam UI/UX Clinical Evaluation Brief · v0.3.2 · September 18, 2026*
+*Method Marketing Agency · xoExam UI/UX Clinical Evaluation Brief · v0.3.3 · October 13, 2026*

@@ -48,7 +48,37 @@ const OSR_OBJ = {
   OD: { sph:-1.25, cyl:-0.50, axis:165, pupilSize:4.3, analysisDia:4.0, scans:2, rmsHOA:0.082, comaRMS:0.051, sphAb:0.024 },
   OS: { sph:-1.50, cyl:-0.75, axis:170, pupilSize:4.4, analysisDia:4.0, scans:1, rmsHOA:0.094, comaRMS:0.061, sphAb:0.028 },
 };
-const OSR_MAX_SCANS = 3;
+const OSR_MAX_SCANS = 3;   // default scan count (3 | 5 selectable pre-capture)
+// ── Multi-scan objective capture (Oct 2026 — Zeshan / Steve; hardware confirmed) ──
+// Demo raw readings in capture order. One spurious reading per eye (blink / accommodative
+// lapse) sits > 1.00 D from the median and is rejected and retaken automatically.
+const OSR_SCAN_DEMO = {
+  OD: [{sph:-1.25,cyl:-0.50,axis:164},{sph:-1.00,cyl:-0.50,axis:167},{sph:-1.50,cyl:-0.50,axis:163},{sph:-2.75,cyl:-0.50,axis:165},{sph:-1.25,cyl:-0.75,axis:166},{sph:-1.25,cyl:-0.25,axis:165}],
+  OS: [{sph:-1.50,cyl:-0.75,axis:170},{sph:-0.25,cyl:-0.75,axis:172},{sph:-1.50,cyl:-0.75,axis:169},{sph:-1.75,cyl:-0.50,axis:171},{sph:-1.25,cyl:-1.00,axis:170},{sph:-1.50,cyl:-0.75,axis:168}],
+};
+const OSR_OBJ_SEED = JSON.parse(JSON.stringify(OSR_OBJ));
+const OSR_REJECT_D = 1.00;   // reading rejected if sphere or cylinder deviates > 1.00 D from the median
+const OSR_SPREAD_FLAG = 0.25; // SD (D) above which scan-to-scan variation is flagged — a measurement, not a verdict
+const OSR_median = a => { const b = [...a].sort((x, y) => x - y); const m = Math.floor(b.length / 2); return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+const OSR_sd = a => { if (a.length < 2) return 0; const m = a.reduce((x, y) => x + y, 0) / a.length; return Math.sqrt(a.reduce((x, y) => x + (y - m) ** 2, 0) / (a.length - 1)); };
+// Power-vector (M, J0, J45) averaging — averaging raw axis breaks across 0°/180° (170° and 10° ≠ 90°).
+const OSR_toPV = r => { const t = 2 * r.axis * Math.PI / 180; return { M: r.sph + r.cyl / 2, J0: -(r.cyl / 2) * Math.cos(t), J45: -(r.cyl / 2) * Math.sin(t) }; };
+const OSR_fromPV = p => {
+  const r = Math.sqrt(p.J0 * p.J0 + p.J45 * p.J45), cyl = -2 * r;
+  let ax = r < 1e-9 ? 180 : (Math.atan2(p.J45, p.J0) * 90 / Math.PI + 180) % 180;
+  ax = Math.round(ax); if (ax === 0) ax = 180;
+  const q = x => Math.round(x * 4) / 4;
+  return { sph: q(p.M - cyl / 2), cyl: q(cyl), axis: ax };
+};
+// Select the first N good readings (median-based rejection), average in power-vector space.
+const OSR_runScans = (eye, n) => {
+  const all = OSR_SCAN_DEMO[eye];
+  const mS = OSR_median(all.map(r => r.sph)), mC = OSR_median(all.map(r => r.cyl));
+  const good = [], rejected = []; let attempts = 0;
+  for (const r of all) { if (good.length >= n) break; attempts++; (Math.abs(r.sph - mS) > OSR_REJECT_D || Math.abs(r.cyl - mC) > OSR_REJECT_D ? rejected : good).push(r); }
+  const pv = good.map(OSR_toPV), avg = k => pv.reduce((a, b) => a + b[k], 0) / pv.length;
+  return { avg: OSR_fromPV({ M: avg('M'), J0: avg('J0'), J45: avg('J45') }), used: good.length, rejected: rejected.length, attempts, sdSph: OSR_sd(good.map(r => r.sph)), sdCyl: OSR_sd(good.map(r => r.cyl)) };
+};
 
 // ════════════════════════════════════════════════════════════════════════
 // HEADSET-SENSOR CONSTANTS (v0.2.7 · confirmed from Steve, Jun 9 2026)
@@ -141,6 +171,31 @@ const OSR_fmtAdd = v => (v > 0 ? `+${v.toFixed(2)} D` : '—');
 const OSR_fmtSE  = v => (v >= 0 ? `+${v.toFixed(2)}` : v.toFixed(2)); // spherical equivalent
 const OSR_SE = r => r.sph + r.cyl / 2;
 const OSR_fmtDelta = (v, unit) => Math.abs(v) < 0.001 ? '—' : `${v > 0 ? '+' : ''}${unit === '°' ? Math.round(v) : v.toFixed(2)}${unit === '°' ? '°' : ''}`;
+
+// ── Digital prism + near (Oct 2026) ──
+// Hardware gate (Steve): independent per-eye displays + calibrated px/deg (1Δ ≈ 0.573°).
+const OSR_PER_EYE_DISPLAY_CONFIRMED = true; // chip suppressed at CD direction (Oct 2026); hardware question still open with Steve
+const OSR_DEMO_PD_MM = 64;  // distance PD — arrives from the objective scan via MPR
+// Demo deviations so the simulated patient view responds; associated (fusion-locked)
+// readings run smaller than dissociated, as clinically expected.
+const OSR_DEMO_PHORIA = { dissociated:{ exo:2.0, rHyper:1.0 }, associated:{ exo:1.0, rHyper:0.5 } };
+const OSR_NEAR_LEVELS = ['20/20','20/25','20/30','20/40','20/50','20/70','20/100'];
+const OSR_READING_TEXT = 'The morning light came in low across the harbor, and the first boats were already moving out past the breakwater toward open water.';
+const OSR_pr = x => { const r = Math.round(x * 100) / 100; return Math.abs(r * 2 - Math.round(r * 2)) < 1e-9 ? r.toFixed(1) : r.toFixed(2); };
+// Prism sign convention: h > 0 = Base Out · h < 0 = Base In · v > 0 = Base Up · v < 0 = Base Down
+const OSR_fmtPrism = p => {
+  const a = [];
+  if (Math.abs(p.h) > 1e-9) a.push(OSR_pr(Math.abs(p.h)) + 'Δ ' + (p.h > 0 ? 'BO' : 'BI'));
+  if (Math.abs(p.v) > 1e-9) a.push(OSR_pr(Math.abs(p.v)) + 'Δ ' + (p.v > 0 ? 'BU' : 'BD'));
+  return a.length ? a.join(' · ') : '—';
+};
+// Per-eye display render offset from prism, PATIENT's frame (+x = patient's right, +y = up), in Δ.
+// The image shifts toward the prism APEX. Base-in is nasal, so the apex is temporal — +x for OD
+// but −x for OS. The same "BI" therefore moves the two eyes' images in OPPOSITE screen
+// directions; BU/BD are not mirrored. MPR: render offsets must follow this function.
+const OSR_prismRenderOffset = (eye, p) => ({ x: (eye === 'OD' ? 1 : -1) * (-p.h), y: -p.v });
+const OSR_cmToIn = cm => Math.round(cm / 2.54);
+const OSR_mUnits = (va, cm) => ((cm / 100) * parseFloat(String(va).split('/')[1]) / 20).toFixed(2);
 
 // #5 Smart-Cylinder bracket ladders. Initial step keys off |cyl|; the working
 // step shrinks one rung per reversal so the endpoint converges (Reichert-style).
@@ -407,7 +462,8 @@ function OSR_MeasTable({ eyeKeys }) {
     ['Axis',                 eyeKeys.map(k => OSR_fmtAxis(OSR_OBJ[k].axis))],
     ['Pupil size',           eyeKeys.map(k => `${OSR_OBJ[k].pupilSize.toFixed(1)} mm`)],
     ['Analysis diameter',    eyeKeys.map(k => `${OSR_OBJ[k].analysisDia.toFixed(1)} mm`)],
-    ['Scans taken',          eyeKeys.map(k => `${OSR_OBJ[k].scans} of ${OSR_MAX_SCANS}`)],
+    ['Scans averaged',       eyeKeys.map(k => `${OSR_OBJ[k].scans} of ${OSR_OBJ[k].scanTarget || OSR_MAX_SCANS}${OSR_OBJ[k].rejected ? ` · ${OSR_OBJ[k].rejected} rejected` : ''}`)],
+    ['Scan spread (SD)',     eyeKeys.map(k => OSR_OBJ[k].sdSph != null ? `Sph ±${OSR_OBJ[k].sdSph.toFixed(2)} · Cyl ±${OSR_OBJ[k].sdCyl.toFixed(2)} D` : '—')],
     ['Spherical aberration', eyeKeys.map(k => `${OSR_OBJ[k].sphAb.toFixed(3)} μm`)],
     ['Total HOA RMS',        eyeKeys.map(k => `${OSR_OBJ[k].rmsHOA.toFixed(3)} μm`)],
     ['Coma RMS',             eyeKeys.map(k => `${OSR_OBJ[k].comaRMS.toFixed(3)} μm`)],
@@ -457,6 +513,9 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
   const [progress, setProgress] = React.useState(0);
   const [scanFrame, setScanFrame] = React.useState(0);
   const [scanNum, setScanNum] = React.useState(1);
+  const [scanTarget, setScanTarget] = React.useState(OSR_MAX_SCANS); // 3 | 5 — selected pre-capture
+  const [scanFromPct, setScanFromPct] = React.useState(0);
+  const [, setObjTick] = React.useState(0);
   const [showFog, setShowFog] = React.useState(false);    // fog prompt after objective complete
 
   // ── Subjective phase ──
@@ -536,6 +595,31 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
   const [binocFog, setBinocFog] = React.useState(true);
   const [binocFogAmt, setBinocFogAmt] = React.useState(0.75); // balance fog, 0.25 D steps
   const [binocBalanced, setBinocBalanced] = React.useState(false);
+  // Balance vs alignment — two separate questions (equal clarity · ocular alignment)
+  const [balMode, setBalMode] = React.useState('balance');        // balance | alignment
+  const [balDissoc, setBalDissoc] = React.useState('occlusion');  // occlusion | split (per-eye display)
+  const [prism, setPrism] = React.useState({ OD:{ h:0, v:0 }, OS:{ h:0, v:0 } });
+  const [prismEye, setPrismEye] = React.useState('OD');
+  const [prismStep, setPrismStep] = React.useState(0.5);
+  const [alignMethod, setAlignMethod] = React.useState('dissociated'); // dissociated (cross) | associated (fusion dot)
+  const [prismRx, setPrismRx] = React.useState(false);
+  // Flow-of-refraction branching (IU Clinical Refraction ch. 3)
+  const [probeAxis, setProbeAxis] = React.useState(180);
+  const [probeNone, setProbeNone] = React.useState(false);
+  const jccEntryRef = React.useRef({});   // per-eye Rx when JCC was first entered → is 2nd MPMVA needed?
+  const [alignTarget, setAlignTarget] = React.useState('cross'); // cross | chart (dissociated) — fusion dot = associated
+  const [nearTarget, setNearTarget] = React.useState('text');   // text | chart            // doctor elects to prescribe measured prism
+  // Near
+  const [nearTab, setNearTab] = React.useState('add');            // add | acuity | range
+  const [addLinked, setAddLinked] = React.useState(true);
+  const [distLock, setDistLock] = React.useState(true);
+  const [nearEye, setNearEye] = React.useState('OU');
+  const [nearVA, setNearVA] = React.useState({ OU:null, OD:null, OS:null });
+  const [nearContrast, setNearContrast] = React.useState('high');
+  const [nearLight, setNearLight] = React.useState('photopic');
+  const [nearConverge, setNearConverge] = React.useState(true);
+  const [nra, setNra] = React.useState(0);
+  const [pra, setPra] = React.useState(0);
   // #3 Habitual (current spectacle) Rx — manual entry; auto-pull from history later
   const [habitualRx, setHabitualRx] = React.useState(OSR_HABITUAL_SEED);
 
@@ -597,7 +681,7 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
     if (objPhase === 'calibrating' || objPhase === 'capturing') {
       progressRef.current = setInterval(() => {
         setProgress(p => {
-          const next = p + (objPhase === 'calibrating' ? 5 : 3.2);
+          const next = p + (objPhase === 'calibrating' ? 5 : 3.2 * 3 / Math.max(3, OSR_runScans(objEye, scanTarget).attempts));
           if (next >= 100) { clearInterval(progressRef.current); return 100; }
           return next;
         });
@@ -614,7 +698,13 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
       return () => clearTimeout(t);
     }
     if (progress >= 100 && objPhase === 'capturing') {
-      const t = setTimeout(() => { setObjPhase('complete'); setScanNum(OSR_OBJ[objEye].scans); }, 450);
+      const t = setTimeout(() => {
+        // Averaged result written to the objective record (prototype stand-in for the MPR payload)
+        const res = OSR_runScans(objEye, scanTarget);
+        Object.assign(OSR_OBJ[objEye], res.avg, { scans:res.used, scanTarget, rejected:res.rejected, sdSph:res.sdSph, sdCyl:res.sdCyl });
+        setObjTick(x => x + 1);
+        setObjPhase('complete'); setScanNum(res.used);
+      }, 450);
       return () => clearTimeout(t);
     }
   }, [progress, objPhase, objEye]);
@@ -639,7 +729,21 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
     setElapsed(0);
     setStage('objective');
   };
-  const startCapture = () => { setObjPhase('calibrating'); setProgress(0); setScanNum(1); };
+  const startCapture = () => { setObjPhase('calibrating'); setProgress(0); setScanNum(1); setScanFromPct(0); };
+  // 3 → 5 without starting over: keep the first three, capture two more
+  const takeTwoMore = () => {
+    const a3 = OSR_runScans(objEye, 3).attempts, a5 = OSR_runScans(objEye, 5).attempts;
+    setScanTarget(5); setScanFromPct(a3 / a5 * 100); setProgress(a3 / a5 * 100); setObjPhase('capturing');
+  };
+  const OSR_scanLive = () => {
+    const all = OSR_SCAN_DEMO[objEye], run = OSR_runScans(objEye, scanTarget);
+    const k = Math.min(run.attempts, Math.floor(progress / 100 * run.attempts) + 1);
+    const mS = OSR_median(all.map(r => r.sph)), mC = OSR_median(all.map(r => r.cyl));
+    const bad = r => Math.abs(r.sph - mS) > OSR_REJECT_D || Math.abs(r.cyl - mC) > OSR_REJECT_D;
+    const seen = all.slice(0, k), good = seen.filter(r => !bad(r)).length;
+    const retaking = seen.length > 0 && bad(seen[seen.length - 1]);
+    return { n: Math.max(1, Math.min(scanTarget, good + (retaking ? 1 : 0))), retaking };
+  };
 
   const objComplete = () => {
     const next = new Set(completedEyes); next.add(objEye); setCompletedEyes(next);
@@ -689,12 +793,20 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
   // ── Subjective Rx steppers ──
   const adjustSubj = (eye, field, delta) => {
     setSubjRx(prev => {
-      let val = prev[eye][field] + delta;
-      if (field === 'axis') val = ((val % 180) + 180) % 180;
-      const dp = field === 'axis' ? 0 : 2;
-      return { ...prev, [eye]: { ...prev[eye], [field]: parseFloat(val.toFixed(dp)) } };
+      const upd = (e) => {
+        let val = prev[e][field] + delta;
+        if (field === 'axis') val = ((val % 180) + 180) % 180;
+        const dp = field === 'axis' ? 0 : 2;
+        return { ...prev[e], [field]: parseFloat(val.toFixed(dp)) };
+      };
+      // Add is normally equal OU — linked by default; unlink for a deliberate difference
+      if (field === 'add' && addLinked) return { ...prev, OD: upd('OD'), OS: upd('OS') };
+      return { ...prev, [eye]: upd(eye) };
     });
   };
+  const OSR_setAddAbs = (eye, val) => setSubjRx(prev => addLinked
+    ? { ...prev, OD:{ ...prev.OD, add:val }, OS:{ ...prev.OS, add:val } }
+    : { ...prev, [eye]:{ ...prev[eye], add:val } });
   const adjustCorr = (eye, field, delta) => {
     setCorrRx(prev => {
       let val = prev[eye][field] + delta;
@@ -804,6 +916,9 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
     setResultView('full-wavefront'); setResultEye('both'); setShowRings(false); setZoomEye(null);
     setReportTab('summary'); setJccReversals(0); setJccLastPref(null); setSmartBracket(true);
     setBinocOcclude('both'); setBinocFog(true); setBinocBalanced(false); setHabitualRx(OSR_HABITUAL_SEED);
+    ['OD','OS'].forEach(k => { OSR_OBJ[k] = { ...OSR_OBJ_SEED[k] }; }); setScanTarget(OSR_MAX_SCANS); setScanFromPct(0);
+    setBalMode('balance'); setBalDissoc('occlusion'); setPrism({ OD:{ h:0, v:0 }, OS:{ h:0, v:0 } }); setPrismRx(false); setAlignMethod('dissociated');
+    setNearTab('add'); setAddLinked(true); setDistLock(true); setNearEye('OU'); setNearVA({ OU:null, OD:null, OS:null }); setNra(0); setPra(0); setAlignTarget('cross'); setNearTarget('text'); setProbeAxis(180); setProbeNone(false); jccEntryRef.current = {};
   };
 
   // ── Small shared sub-renderers ──
@@ -957,7 +1072,7 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
           <span style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{OSR_EYE_NAMED[objEye]}</span>
           <span style={{ fontSize:11, color:'#9ca3af' }}>·</span>
           <span style={{ fontSize:11, fontWeight:600, color:'#6b7280' }}>
-            {objPhase === 'init' ? 'Pre-capture readiness' : objPhase === 'calibrating' ? 'Calibrating — centering optics to pupil' : objPhase === 'capturing' ? `Capturing — scan ${scanNum} of ${OSR_MAX_SCANS}` : 'Capture complete'}
+            {objPhase === 'init' ? 'Pre-capture readiness' : objPhase === 'calibrating' ? 'Calibrating — centering optics to pupil' : objPhase === 'capturing' ? `Capturing — scan ${OSR_scanLive().n} of ${scanTarget}` : 'Capture complete'}
           </span>
           <div style={{ flex:1, display:'flex', justifyContent:'flex-end' }}>
             <OSR_EyeBreadcrumb sequence={objSequence} currentEye={objEye} completedSet={completedEyes} accent={accent}/>
@@ -973,8 +1088,20 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
               <div style={{ textAlign:'center', marginBottom:20 }}>
                 <h2 style={{ fontSize:16, fontWeight:700, color:'#111827', margin:'0 0 6px' }}>Position {objEye === 'OS' ? 'left' : 'right'} eye</h2>
                 <p style={{ fontSize:12, color:'#6b7280', lineHeight:1.55, margin:0 }}>
-                  Ensure the patient's eye is aligned. The system calibrates, then averages up to {OSR_MAX_SCANS} scans for accuracy.
+                  Ensure the patient's eye is aligned. The system calibrates, then averages {scanTarget} scans for accuracy.
                 </p>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', marginBottom:10, background:'#f9fafb', border:'1px solid #e5e7eb', borderRadius:12 }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:12.5, fontWeight:700, color:'#374151' }}>Scans per eye</div>
+                  <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>5 for young accommodating patients, unsteady fixation, or tear-film instability</div>
+                </div>
+                <div style={{ display:'flex', background:'#eef1f4', borderRadius:10, padding:3, gap:3, flexShrink:0 }}>
+                  {[3, 5].map(n => (
+                    <button key={n} onClick={() => setScanTarget(n)}
+                      style={{ minWidth:64, minHeight:44, borderRadius:8, border:'none', cursor:'pointer', background: scanTarget === n ? '#fff' : 'transparent', color: scanTarget === n ? OSR_C.navy : '#6b7280', fontSize:13, fontWeight:700, fontFamily:OSR_FONT, boxShadow: scanTarget === n ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>{n} scans</button>
+                  ))}
+                </div>
               </div>
               <Collapsible label="Patient alignment" status="Ready" open={openAlign} onToggle={() => setOpenAlign(v => !v)}>
                 <div style={{ paddingTop:12 }}>
@@ -1017,12 +1144,12 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:18, padding:'14px 0' }}>
               <OSR_EyeScanStage scanFrame={scanFrame} scanning={true} aligned={objPhase === 'capturing'} accent={accent} size={240}/>
               <h2 style={{ fontSize:16, fontWeight:700, color:'#111827', margin:0 }}>
-                {objPhase === 'calibrating' ? 'Calibrating — centering optics to pupil' : `Capturing wavefront data — scan ${scanNum} of ${OSR_MAX_SCANS}`}
+                {objPhase === 'calibrating' ? 'Calibrating — centering optics to pupil' : `Capturing wavefront data — scan ${OSR_scanLive().n} of ${scanTarget}`}
               </h2>
               <p style={{ fontSize:12, color:'#6b7280', textAlign:'center', maxWidth:420, lineHeight:1.55, margin:0 }}>
                 {objPhase === 'calibrating'
                   ? 'Patient should fixate the central target and hold still.'
-                  : `System averaging scans for accuracy. Background turns green when alignment is locked.`}
+                  : OSR_scanLive().retaking ? 'Reading rejected (blink or fixation loss) — retaking automatically.' : `Averaging ${scanTarget} scans. Background turns green when alignment is locked.`}
               </p>
               <div style={{ width:280, height:4, borderRadius:2, background:'#e5e7eb', overflow:'hidden' }}>
                 <div style={{ height:'100%', width:`${progress}%`, background:accent, borderRadius:2, transition:'width 0.1s' }}/>
@@ -1041,13 +1168,26 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
                 <h2 style={{ fontSize:16, fontWeight:700, color:'#111827', margin:0 }}>Capture complete — {OSR_EYE_NAMED[objEye]}</h2>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10, width:'100%', maxWidth:520 }}>
                   {[['Sphere', `${OSR_fmtSph(d.sph)} D`], ['Cylinder', `${OSR_fmtCyl(d.cyl)} D`], ['Axis', OSR_fmtAxis(d.axis)],
-                    ['Pupil size', `${d.pupilSize.toFixed(1)} mm`], ['Scans taken', `${d.scans} of ${OSR_MAX_SCANS}`], ['Total HOA RMS', `${d.rmsHOA.toFixed(3)} μm`]].map(([l,v]) => (
+                    ['Pupil size', `${d.pupilSize.toFixed(1)} mm`], ['Scans averaged', `${d.scans} of ${d.scanTarget || scanTarget}${d.rejected ? ` · ${d.rejected} rejected` : ''}`], ['Total HOA RMS', `${d.rmsHOA.toFixed(3)} μm`]].map(([l,v]) => (
                     <div key={l} style={{ background:'#f9fafb', borderRadius:10, padding:'12px 14px', border:'1px solid #e5e7eb' }}>
                       <div style={{ fontSize:10, fontWeight:600, color:'#6b7280', marginBottom:4 }}>{l}</div>
                       <div style={{ fontSize:16, fontWeight:700, color:'#111827', fontVariantNumeric:'tabular-nums' }}>{v}</div>
                     </div>
                   ))}
                 </div>
+                {d.sdSph != null && (() => {
+                  const high = d.sdSph > OSR_SPREAD_FLAG || d.sdCyl > OSR_SPREAD_FLAG;
+                  return (
+                    <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', justifyContent:'center', width:'100%', maxWidth:520 }}>
+                      <span title="Scan-to-scan standard deviation" style={{ fontSize:12, fontWeight:700, fontVariantNumeric:'tabular-nums', padding:'7px 12px', borderRadius:10, color: high ? OSR_C.amber : '#047857', background: high ? OSR_C.amber + '12' : '#f0fdf4', border:'1px solid ' + (high ? OSR_C.amber + '55' : '#bbf7d0') }}>
+                        Scan spread · Sph ±{d.sdSph.toFixed(2)} · Cyl ±{d.sdCyl.toFixed(2)} D{high ? ' · variation high' : ''}
+                      </span>
+                      {(d.scanTarget || scanTarget) === 3 && (
+                        <button onClick={takeTwoMore} style={{ minHeight:44, padding:'8px 16px', borderRadius:10, border:'1.5px solid ' + accent, background: accent + '0e', color:accent, fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:OSR_FONT, whiteSpace:'nowrap' }}>Take 2 more · average 5</button>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div style={{ display:'flex', gap:12, marginTop:6 }}>
                   <button onClick={objComplete} style={primaryBtn}>
                     {objSequence.indexOf(objEye) + 1 < objSequence.length ? 'Scan other eye →' : 'Proceed to subjective →'}
@@ -1395,6 +1535,25 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
     const line = OSR_VA_LINES.find(l => l.n === pos) || OSR_VA_LINES[0];
     const cnt = line.letters.length;
     const duo = target === 'duochrome';
+    const nearRec = nearVA[nearEye] || '20/40';
+    const OSR_specialPeek = subjStep === 'binocular' && balMode === 'alignment'
+      ? <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>{OSR_alignSvg(250, 100, 13)}<span style={{ fontSize:10, fontWeight:700, color:OSR_C.muted }}><span style={{ color:'#d92b2b' }}>OD</span> · <span style={{ color:'#1f6fd1' }}>OS</span> · {alignMethod === 'associated' ? 'fusion dot' : alignTarget === 'chart' ? 'chart target' : 'fixation cross'}</span></div>
+      : subjStep === 'binocular' && balDissoc === 'split'
+      ? <div style={{ width:'100%', display:'flex', flexDirection:'column', gap:8 }}>{['OD','OS'].map((e, i) => (
+          <div key={e} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:9, paddingBottom: i === 0 ? 8 : 0, borderBottom: i === 0 ? '1px dashed #e5e7eb' : 'none' }}>
+            <span style={{ fontSize:9.5, fontWeight:700, color:OSR_C.muted, width:20 }}>{e}</span>
+            {(OSR_VA_LINES.find(l => l.n === pos) || OSR_VA_LINES[0]).letters.map((ltr, k, arr) => <span key={k} style={{ fontSize:Math.min((OSR_VA_LINES.find(l => l.n === pos) || OSR_VA_LINES[0]).fs, Math.floor(190 / arr.length), 30), fontWeight:700, color:OSR_C.text, lineHeight:1 }}>{ltr}</span>)}
+          </div>))}</div>
+      : subjStep === 'add'
+      ? <div style={{ display:'flex', flexDirection:'column', gap:6, padding:'0 6px', background: nearContrast === 'low' ? '#fff' : '#fffdf6' }}>
+          <span style={{ fontSize:9.5, fontWeight:700, color:accent }}>{nearEye} · {nearRec} @ {workingDistCm} cm · {OSR_cmToIn(workingDistCm)} in</span>
+          {nearTarget === 'chart'
+            ? <div style={{ display:'flex', justifyContent:'center', padding:'4px 0' }}>{OSR_chartGlyphs(Math.max(8, Math.min(44, 8 * parseFloat(nearRec.split('/')[1]) / 20)), nearContrast === 'low' ? '#9aa1aa' : '#111827', 250)}</div>
+            : <span style={{ fontFamily:'Georgia, serif', fontSize:Math.max(7, Math.min(24, 7 * parseFloat(nearRec.split('/')[1]) / 20)), lineHeight:1.35, color: nearContrast === 'low' ? '#9aa1aa' : '#111827' }}>{OSR_READING_TEXT}</span>}
+        </div>
+      : null;
+    const duoShow = duo && !OSR_specialPeek;
+    const OSR_peekAligned = subjStep === 'binocular' && balMode === 'alignment' && OSR_alignState().aligned;
     const navBtn = (dis) => ({ width:46, height:46, minWidth:46, minHeight:46, borderRadius:10, border:'1.5px solid ' + (dis ? '#eef1f4' : OSR_C.border), background:'#fff', cursor: dis ? 'default' : 'pointer', color: dis ? '#d1d5db' : OSR_C.text2, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, padding:0 });
     const tgt = (on) => ({ minHeight:52, borderRadius:10, border:'1.5px solid ' + (on ? accent : '#e5e7eb'), background: on ? accent + '0d' : '#fff', cursor:'pointer', fontFamily:OSR_FONT, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, padding:'5px 4px' });
     const modeBtn = (on, locked) => ({ flex:1, minWidth:0, minHeight:40, borderRadius:9, border:'1.5px solid ' + (on ? accent : '#e5e7eb'), background: on ? accent + '0d' : locked ? '#f7f8fa' : '#fff', color: on ? accent : locked ? '#c9ced6' : '#6b7280', fontSize:11.5, fontWeight:700, cursor: locked ? 'default' : 'pointer', fontFamily:OSR_FONT, padding:'3px 4px', whiteSpace:'nowrap' });
@@ -1429,9 +1588,9 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
           <span style={{ ...OSR_VIOLATOR, fontSize:9 }}>Target</span>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4, minmax(0,1fr))', gap:6 }}>
             {[['letters','Snellen'], ['tumblingE','Tumbling E'], ['tumblingC','Landolt C']].map(([id, t]) => {
-              const on = !duo && optotype === id;
+              const on = !duo && optotype === id && !(subjStep === 'add' && nearTarget === 'text');
               return (
-                <button key={id} onClick={() => { setTarget('optotypes'); setOptotype(id); }} style={tgt(on)}>
+                <button key={id} onClick={() => { setTarget('optotypes'); setOptotype(id); if (subjStep === 'binocular' && balMode === 'alignment') { setAlignMethod('dissociated'); setAlignTarget('chart'); } if (subjStep === 'add') setNearTarget('chart'); }} style={tgt(on)}>
                   {id === 'letters'
                     ? <span style={{ fontSize:15, fontWeight:700, color: on ? accent : '#9ca3af', lineHeight:1 }}>A</span>
                     : <OSR_Optotype kind={id === 'tumblingC' ? 'C' : 'E'} size={15} rotation={id === 'tumblingC' ? 90 : 0} color={on ? accent : '#9ca3af'}/>}
@@ -1439,6 +1598,12 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
                 </button>
               );
             })}
+            {subjStep === 'add' ? (
+              <button onClick={() => setNearTarget('text')} style={tgt(nearTarget === 'text')}>
+                <span style={{ display:'flex', flexDirection:'column', gap:2 }}>{[13, 13, 8].map((wd, i) => <span key={i} style={{ width:wd, height:2, borderRadius:1, background: nearTarget === 'text' ? accent : '#9ca3af' }}/>)}</span>
+                <span style={{ fontSize:9, fontWeight:700, color: nearTarget === 'text' ? accent : '#6b7280', lineHeight:1.15 }}>Reading</span>
+              </button>
+            ) : (
             <button onClick={() => setTarget('duochrome')} style={tgt(duo)}>
               <span style={{ display:'flex', gap:2 }}>
                 <span style={{ width:6, height:11, borderRadius:2, background:'#d92b2b' }}/>
@@ -1446,6 +1611,7 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
               </span>
               <span style={{ fontSize:9, fontWeight:700, color: duo ? accent : '#6b7280', lineHeight:1.15 }}>Duochrome</span>
             </button>
+            )}
           </div>
           <div style={{ display:'flex', gap:6, opacity: duo ? 0.4 : 1, pointerEvents: duo ? 'none' : 'auto' }}>
             {[['line', 'Full line · ' + cnt], ['single','Single character']].map(([id, t]) => {
@@ -1456,8 +1622,8 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
         </div>
 
         {peek && (
-          <div style={{ background: duo ? '#111' : '#fff', border:'1.5px solid #e5e7eb', borderRadius:11, padding: duo ? 0 : '12px 8px', display:'flex', alignItems:'center', justifyContent:'center', minHeight:96, overflow:'hidden' }}>
-            {duo ? (
+          <div style={{ background: duoShow ? '#111' : OSR_peekAligned ? '#f0fdf4' : '#fff', border:'1.5px solid ' + (OSR_peekAligned ? '#22a35a' : '#e5e7eb'), boxShadow: OSR_peekAligned ? '0 0 0 3px #22a35a22' : 'none', transition:'border-color 0.15s, background 0.15s', borderRadius:11, padding: duoShow ? 0 : '12px 8px', display:'flex', alignItems:'center', justifyContent:'center', minHeight:96, overflow:'hidden' }}>
+            {OSR_specialPeek ? OSR_specialPeek : duoShow ? (
               <div style={{ display:'flex', width:'100%', minHeight:96 }}>
                 {[['#d92b2b', ['O','X']], ['#13a05c', ['D','K']]].map(([bg, chars]) => (
                   <div key={bg} style={{ flex:1, background:bg, display:'flex', alignItems:'center', justifyContent:'center', gap:11 }}>
@@ -1465,7 +1631,7 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
                   </div>
                 ))}
               </div>
-            ) : (subjStep === 'jcc-axis' || subjStep === 'jcc-power')
+            ) : (subjStep === 'jcc-axis' || subjStep === 'jcc-power' || subjStep === 'jcc-probe')
               ? <span style={{ fontSize:64, fontWeight:700, color:OSR_C.text, lineHeight:1 }}>O</span>
               : OSR_effMode === 'single'
               ? (OSR_isOpto
@@ -1492,12 +1658,161 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
   };
   // Which prescription row the active tool is working on — the tool focuses the
   // instrument rather than duplicating its controls elsewhere.
-  const OSR_TOOL_FIELD = { sphere:'sph', mpmva2:'sph', 'jcc-power':'cyl', 'jcc-axis':'axis', add:'add', binocular:'sph' };
+  const OSR_TOOL_FIELD = { sphere:'sph', mpmva2:'sph', 'jcc-power':'cyl', 'jcc-axis':'axis', 'jcc-probe':'cyl', add:'add', binocular:'sph' };
+
+  // Starting cyl > 0.50 D → axis first · ≤ 0.50 D → power first (confirm it is real) · none → probe
+  const OSR_jccEntryStep = () => {
+    const c = Math.abs(subjRx[subjEye].cyl);
+    return c > 0.50 + 1e-9 ? 'jcc-axis' : c > 1e-9 ? 'jcc-power' : 'jcc-probe';
+  };
+  const OSR_goTool = (id) => {
+    if (id === 'jcc-axis') {
+      if (!jccEntryRef.current[subjEye]) jccEntryRef.current[subjEye] = { ...subjRx[subjEye] };
+      setSubjStep(OSR_jccEntryStep());
+      return;
+    }
+    setSubjStep(id);
+  };
+  // 2nd MPMVA only when JCC changed cylinder power or axis
+  const OSR_mpmva2Need = () => {
+    const e0 = jccEntryRef.current[subjEye]; if (!e0) return null;
+    const w = subjRx[subjEye];
+    return Math.abs(w.cyl - e0.cyl) > 1e-9 || Math.round(w.axis) !== Math.round(e0.axis);
+  };
+
+  // ── Shared control builders (plain calls, not components — no remount on render) ──
+  const OSR_seg = (opts, val, set, h = 30) => (
+    <div style={{ display:'flex', background:'#f3f4f6', borderRadius:9, padding:3, gap:2, flexShrink:0 }}>
+      {opts.map(([id, lab]) => (
+        <button key={String(id)} onClick={() => set(id)}
+          style={{ minHeight:h, padding:'4px 12px', borderRadius:7, border:'none', cursor:'pointer', background: val===id ? '#fff' : 'transparent', color: val===id ? OSR_C.navy : '#6b7280', fontSize:11.5, fontWeight:700, fontFamily:OSR_FONT, boxShadow: val===id ? '0 1px 2px rgba(0,0,0,0.12)' : 'none', whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums' }}>{lab}</button>
+      ))}
+    </div>
+  );
+  const OSR_toggleBtn = (on, label, onClick, title) => (
+    <button onClick={onClick} title={title}
+      style={{ display:'flex', alignItems:'center', gap:8, minHeight:40, padding:'5px 11px', borderRadius:10, border:'1.5px solid ' + (on ? accent + '55' : '#e5e7eb'), background: on ? accent + '0a' : '#fff', cursor:'pointer', fontFamily:OSR_FONT, flexShrink:0 }}>
+      <span style={{ width:30, height:17, borderRadius:9, background: on ? accent : '#cbd5e1', position:'relative', flexShrink:0, display:'block' }}>
+        <span style={{ position:'absolute', top:2, left: on ? 15 : 2, width:13, height:13, borderRadius:'50%', background:'#fff', transition:'left 0.15s' }}/>
+      </span>
+      <span style={{ fontSize:11.5, fontWeight:700, color: on ? accent : '#6b7280', whiteSpace:'nowrap' }}>{label}</span>
+    </button>
+  );
+  const OSR_hwChip = () => OSR_PER_EYE_DISPLAY_CONFIRMED ? null : (
+    <span title="Requires independent per-eye displays + calibrated pixels-per-degree (Steve)" style={{ fontSize:10, fontWeight:700, color:OSR_C.amber, background:OSR_C.amber + '12', border:'1px solid ' + OSR_C.amber + '44', padding:'3px 9px', borderRadius:11, whiteSpace:'nowrap' }}>Hardware confirmation pending</span>
+  );
+  const OSR_chartGlyphs = (fs, color, maxW) => {
+    const line = OSR_VA_LINES.find(l => l.n === pos) || OSR_VA_LINES[0];
+    if (OSR_isOpto) return <OSR_Optotype kind={OSR_optoKind} size={fs} rotation={optoRot[subjEye + '_' + pos + '_' + charPtr] || 0} color={color}/>;
+    if (OSR_effMode === 'single') return <span style={{ fontSize:fs, fontWeight:700, color, lineHeight:1 }}>{line.letters[Math.min(charPtr, line.letters.length - 1)]}</span>;
+    const f = Math.min(fs, Math.floor((maxW || 240) / (line.letters.length * 1.3)));
+    return <span style={{ display:'flex', gap:Math.max(f * 0.26, 4), alignItems:'center' }}>{line.letters.map((ltr, i) => <span key={i} style={{ fontSize:f, fontWeight:700, color, lineHeight:1 }}>{ltr}</span>)}</span>;
+  };
+  const OSR_hasPrism = ['OD','OS'].some(k => Math.abs(prism[k].h) > 1e-9 || Math.abs(prism[k].v) > 1e-9);
+  // Perceived image position per eye = display render offset − ocular deviation.
+  // Exo → crossed diplopia; right hyper → OD image lower. Aligned when separation ≈ 0.
+  const OSR_alignState = () => {
+    const dev = OSR_DEMO_PHORIA[alignMethod];
+    const gz = { OD:{ x: dev.exo / 2, y: dev.rHyper / 2 }, OS:{ x: -dev.exo / 2, y: -dev.rHyper / 2 } };
+    const per = {};
+    ['OD','OS'].forEach(e => { const r = OSR_prismRenderOffset(e, prism[e]); per[e] = { x: r.x - gz[e].x, y: r.y - gz[e].y }; });
+    const sx = per.OD.x - per.OS.x, sy = per.OD.y - per.OS.y;
+    const sep = Math.hypot(sx, sy);
+    return { per, sx, sy, sep, aligned: sep < 0.13 };
+  };
+  const OSR_alignSvg = (w, h, scale) => {
+    const st = OSR_alignState();
+    const mx = (st.per.OD.x + st.per.OS.x) / 2, my = (st.per.OD.y + st.per.OS.y) / 2;
+    const pt = e => [w / 2 + (st.per[e].x - mx) * scale, h / 2 - (st.per[e].y - my) * scale];
+    const col = st.aligned ? { OD:'#111827', OS:'#111827' } : { OD:'#d92b2b', OS:'#1f6fd1' };
+    const arm = Math.max(8, scale * 0.9);
+    if (alignMethod === 'dissociated' && alignTarget === 'chart') {
+      const line = OSR_VA_LINES.find(l => l.n === pos) || OSR_VA_LINES[0];
+      const fs = Math.min(line.fs, Math.round(h * 0.34));
+      return (
+        <div style={{ position:'relative', width:w, height:h }}>
+          {(st.aligned ? ['OD'] : ['OS','OD']).map(e => { const [x, y] = pt(e); return (
+            <div key={e} style={{ position:'absolute', left:x, top:y, transform:'translate(-50%,-50%)', mixBlendMode:'multiply', opacity:0.9 }}>{OSR_chartGlyphs(fs, col[e], w * 0.8)}</div>
+          ); })}
+        </div>
+      );
+    }
+    if (alignMethod === 'associated') {
+      const [ox, oy] = pt('OD'), [sx2, sy2] = pt('OS');
+      return (
+        <svg width={w} height={h} viewBox={'0 0 ' + w + ' ' + h} style={{ display:'block' }}>
+          <circle cx={w / 2} cy={h / 2} r={arm * 2.2} fill="none" stroke="#cbd5e1" strokeWidth="2"/>
+          <circle cx={w / 2} cy={h / 2} r="3" fill="#111827"/>
+          <line x1={ox} y1={oy - arm * 1.9} x2={ox} y2={oy - 6} stroke={col.OD} strokeWidth="3" strokeLinecap="round"/>
+          <line x1={ox + 6} y1={oy} x2={ox + arm * 1.9} y2={oy} stroke={col.OD} strokeWidth="3" strokeLinecap="round"/>
+          <line x1={sx2} y1={sy2 + 6} x2={sx2} y2={sy2 + arm * 1.9} stroke={col.OS} strokeWidth="3" strokeLinecap="round"/>
+          <line x1={sx2 - arm * 1.9} y1={sy2} x2={sx2 - 6} y2={sy2} stroke={col.OS} strokeWidth="3" strokeLinecap="round"/>
+        </svg>
+      );
+    }
+    return (
+      <svg width={w} height={h} viewBox={'0 0 ' + w + ' ' + h} style={{ display:'block' }}>
+        {(st.aligned ? ['OD'] : ['OS','OD']).map(e => { const [x, y] = pt(e); return (
+          <g key={e} opacity="0.92">
+            <line x1={x - arm} y1={y} x2={x + arm} y2={y} stroke={col[e]} strokeWidth="3.2" strokeLinecap="round"/>
+            <line x1={x} y1={y - arm} x2={x} y2={y + arm} stroke={col[e]} strokeWidth="3.2" strokeLinecap="round"/>
+          </g>
+        ); })}
+      </svg>
+    );
+  };
+  const OSR_wdMm = workingDistCm * 10;
+  const OSR_nearPD = OSR_DEMO_PD_MM * OSR_wdMm / (OSR_wdMm + 27);           // 27 mm ≈ spectacle plane → centre of rotation
+  const OSR_convDemand = (OSR_DEMO_PD_MM / 10) / ((workingDistCm + 2.7) / 100); // total Δ for the working distance
 
   // ── Tool accessory: only what the Rx rows cannot express ──
   const OSR_ToolAccessory = () => {
     const rr = subjRx[subjEye];
     const isAxis = subjStep === 'jcc-axis';
+
+    if (subjStep === 'jcc-probe') {
+      const pBtn = (on) => ({ minWidth:58, minHeight:44, borderRadius:9, border:'1.5px solid ' + (on ? accent : '#e5e7eb'), background: on ? accent : '#fff', color: on ? '#fff' : OSR_C.text2, fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:OSR_FONT, fontVariantNumeric:'tabular-nums' });
+      const found = () => {
+        // patient preferred the flip with the minus (red) axis here → start −0.25 D cyl at that axis
+        const e = subjEye;
+        setSubjRx(prev => ({ ...prev, [e]: { ...prev[e], cyl:-0.25, axis: probeAxis % 180 } }));
+        setProbeNone(false);
+        setSubjStep('jcc-axis');
+      };
+      return (
+        <div style={{ display:'flex', gap:16, alignItems:'center', flexWrap:'wrap' }}>
+          <svg width="78" height="78" viewBox="0 0 120 120" style={{ flexShrink:0 }}>
+            <circle cx="60" cy="60" r="50" fill="#f9fafb" stroke="#e5e7eb" strokeWidth="2"/>
+            {(() => {
+              const ax = probeAxis * Math.PI / 180;
+              const redA = jccFlip === 1 ? ax : ax + Math.PI / 2, whiteA = redA + Math.PI / 2;
+              const pt = (a, r) => [60 + Math.cos(a) * r, 60 - Math.sin(a) * r];
+              const [r1x, r1y] = pt(redA, 36), [r2x, r2y] = pt(redA + Math.PI, 36), [w1x, w1y] = pt(whiteA, 36), [w2x, w2y] = pt(whiteA + Math.PI, 36);
+              return (<>
+                <line x1={w1x} y1={w1y} x2={w2x} y2={w2y} stroke="#cbd5e1" strokeWidth="2.5"/>
+                <line x1={r1x} y1={r1y} x2={r2x} y2={r2y} stroke="#dc2626" strokeWidth="2.5"/>
+                <circle cx={r1x} cy={r1y} r="7" fill="#dc2626"/><circle cx={r2x} cy={r2y} r="7" fill="#dc2626"/>
+                <circle cx={w1x} cy={w1y} r="7" fill="#fff" stroke="#94a3b8" strokeWidth="1.8"/><circle cx={w2x} cy={w2y} r="7" fill="#fff" stroke="#94a3b8" strokeWidth="1.8"/>
+              </>);
+            })()}
+          </svg>
+          <div style={{ display:'flex', flexDirection:'column', gap:9, flex:1, minWidth:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap' }}>
+              <span style={{ ...OSR_VIOLATOR, fontSize:9, marginRight:2 }}>Probe at</span>
+              {[180, 90, 45, 135].map(a => <button key={a} onClick={() => { setProbeAxis(a); setJccFlip(1); }} style={pBtn(probeAxis === a)}>{a}°</button>)}
+              <div style={{ width:1, height:30, background:'#e5e7eb', margin:'0 2px' }}/>
+              <button onClick={() => { setJccFlip(f => f === 1 ? 2 : 1); setComparisons(c => c + 1); }}
+                style={{ minHeight:44, padding:'10px 18px', borderRadius:10, border:'1.5px solid ' + accent, background: accent + '0e', color:accent, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:OSR_FONT, whiteSpace:'nowrap' }}>Flip — showing {jccFlip}</button>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+              <button onClick={found} style={{ minHeight:44, padding:'8px 15px', borderRadius:9, border:'1.5px solid ' + accent, background:accent, color:'#fff', cursor:'pointer', fontSize:12.5, fontWeight:700, fontFamily:OSR_FONT, whiteSpace:'nowrap' }}>Cylinder found at {probeAxis}° → axis</button>
+              <button onClick={() => setProbeNone(true)} style={{ minHeight:44, padding:'8px 15px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:12.5, fontWeight:700, color:OSR_C.text2, fontFamily:OSR_FONT, whiteSpace:'nowrap' }}>No cylinder found</button>
+              {probeNone && <span style={{ fontSize:11, fontWeight:700, color:'#047857', background:'#f0fdf4', border:'1px solid #bbf7d0', padding:'5px 11px', borderRadius:13, whiteSpace:'nowrap' }}>Recorded · no cylinder</span>}
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     if (subjStep === 'jcc-axis' || subjStep === 'jcc-power') {
       // JCC fixates a ROUND target two lines above best acuity (Westmead §8.2 step 3) —
@@ -1543,7 +1858,12 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
             <div style={{ display:'flex', alignItems:'center', gap:9, flexWrap:'wrap' }}>
               <button onClick={() => { setJccFlip(f => f === 1 ? 2 : 1); setComparisons(c => c + 1); }}
                 style={{ minHeight:46, padding:'10px 20px', borderRadius:10, border:'1.5px solid ' + accent, background: accent + '0e', color:accent, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:OSR_FONT, whiteSpace:'nowrap' }}>Flip — showing {jccFlip}</button>
-              <span style={{ fontSize:11, fontWeight:700, color:OSR_C.muted, background:'#f3f4f6', padding:'5px 11px', borderRadius:13, whiteSpace:'nowrap' }}>Target · O at {jccLine.va}</span>
+              <div style={{ width:1, height:30, background:'#e5e7eb', margin:'0 2px' }}/>
+              <span style={{ ...OSR_VIOLATOR, fontSize:9 }} title={isAxis ? 'Higher cross-cylinder for axis' : 'Lower cross-cylinder for power'}>Cross-cyl {isAxis ? '· axis' : '· power'}</span>
+              {[0.25, 0.50, 0.75, 1.00].map(p => (
+                <button key={p} onClick={() => setJccPwr(p)}
+                  style={{ minWidth:50, minHeight:44, borderRadius:9, border:'1.5px solid ' + (jccPwr===p ? accent : '#e5e7eb'), background: jccPwr===p ? accent : '#fff', color: jccPwr===p ? '#fff' : '#374151', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:OSR_FONT, fontVariantNumeric:'tabular-nums' }}>{p.toFixed(2)}</button>
+              ))}
             </div>
 
             {isAxis ? (
@@ -1584,13 +1904,6 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
               </div>
             )}
 
-            <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-              <span style={{ ...OSR_VIOLATOR, fontSize:9, marginRight:2 }}>Cross-cyl {isAxis ? '(axis — higher)' : '(power — lower)'}</span>
-              {[0.25, 0.50, 0.75, 1.00].map(p => (
-                <button key={p} onClick={() => setJccPwr(p)}
-                  style={{ minWidth:50, minHeight:40, borderRadius:9, border:'1.5px solid ' + (jccPwr===p ? accent : '#e5e7eb'), background: jccPwr===p ? accent : '#fff', color: jccPwr===p ? '#fff' : '#374151', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:OSR_FONT, fontVariantNumeric:'tabular-nums' }}>{p.toFixed(2)}</button>
-              ))}
-            </div>
           </div>
         </div>
       );
@@ -1599,27 +1912,136 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
     if (subjStep === 'add') {
       const expected = patientAge >= 65 ? '+2.50' : patientAge >= 60 ? '+2.25' : patientAge >= 55 ? '+2.00' : patientAge >= 50 ? '+1.75' : patientAge >= 45 ? '+1.25' : patientAge >= 40 ? '+0.75' : '—';
       const wdAdd = workingDistCm > 0 ? (100 / workingDistCm) : 0;
+      const unequal = Math.abs(subjRx.OD.add - subjRx.OS.add) > 1e-9;
+      const lbl = { ...OSR_VIOLATOR, fontSize:9 };
+      const sep = <div style={{ width:1, height:30, background:'#e5e7eb', flexShrink:0 }}/>;
+      if (nearTab === 'acuity') {
+        const rec = nearVA[nearEye];
+        return (
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              {OSR_seg([['OU','OU'], ['OD','OD'], ['OS','OS']], nearEye, setNearEye, 36)}
+              <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                {OSR_NEAR_LEVELS.map(va => (
+                  <button key={va} onClick={() => setNearVA(m => ({ ...m, [nearEye]: m[nearEye] === va ? null : va }))}
+                    style={{ minWidth:58, minHeight:40, padding:'4px 8px', borderRadius:9, border:'1.5px solid ' + (rec === va ? accent : '#e5e7eb'), background: rec === va ? accent : '#fff', color: rec === va ? '#fff' : OSR_C.text2, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:OSR_FONT, fontVariantNumeric:'tabular-nums' }}>{va}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <span style={{ fontSize:12, fontWeight:700, color: rec ? OSR_C.navy : '#a8b0ba', fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>
+                {nearEye} {rec ? rec + ' · ' + OSR_mUnits(rec, workingDistCm) + ' M' : 'not recorded'}
+              </span>
+              {sep}
+              {OSR_seg([['high','High'], ['low','Low contrast']], nearContrast, setNearContrast)}
+              {OSR_seg([['photopic','Photopic'], ['mesopic','Mesopic']], nearLight, setNearLight)}
+              {OSR_toggleBtn(nearConverge, 'Converge ' + OSR_convDemand.toFixed(1) + 'Δ', () => setNearConverge(v => !v), 'Shift each eye\'s image inward to match the working distance · near PD ' + OSR_nearPD.toFixed(1) + ' mm')}
+            </div>
+          </div>
+        );
+      }
+      if (nearTab === 'range') {
+        const shift = Math.round(((nra + pra) / 2) * 4) / 4;
+        return (
+          <div style={{ display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={lbl}>NRA</span>
+              <div style={{ width:140 }}><Stepper value={nra} field="nra" step={0.25} eye={subjEye} onAdjust={(e, f, d) => setNra(v => Math.max(0, Math.min(4, Math.round((v + d) * 4) / 4)))} fmt={v => '+' + v.toFixed(2)}/></div>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={lbl}>PRA</span>
+              <div style={{ width:140 }}><Stepper value={pra} field="pra" step={0.25} eye={subjEye} onAdjust={(e, f, d) => setPra(v => Math.max(-4, Math.min(0, Math.round((v + d) * 4) / 4)))} fmt={v => (v < 0 ? '−' : '') + Math.abs(v).toFixed(2)}/></div>
+            </div>
+            {sep}
+            <span style={{ fontSize:11.5, fontWeight:700, color:OSR_C.muted, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>Range {(nra - pra).toFixed(2)} D</span>
+            <button onClick={() => { if (shift !== 0) { adjustSubj(subjEye, 'add', shift); setNra(0); setPra(0); } }} disabled={shift === 0}
+              style={{ minHeight:44, padding:'8px 14px', borderRadius:9, border:'1.5px solid ' + (shift !== 0 ? accent : '#e5e7eb'), background: shift !== 0 ? accent + '0e' : '#f7f8fa', color: shift !== 0 ? accent : '#c9ced6', cursor: shift !== 0 ? 'pointer' : 'default', fontSize:12, fontWeight:700, fontFamily:OSR_FONT, whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums' }}>
+              Center add {shift !== 0 ? '(' + (shift > 0 ? '+' : '−') + Math.abs(shift).toFixed(2) + ')' : ''}
+            </button>
+          </div>
+        );
+      }
       return (
-        <div style={{ display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
-          <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
-            <span style={{ ...OSR_VIOLATOR, fontSize:9 }}>Age {patientAge} expects</span>
-            <span style={{ fontSize:17, fontWeight:700, color:OSR_C.navy, fontVariantNumeric:'tabular-nums' }}>{expected}</span>
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+            {OSR_seg([25, 33, 40, 50].map(cm => [cm, <span style={{ display:'flex', flexDirection:'column', alignItems:'center', lineHeight:1.1 }}><span>{cm} cm</span><span style={{ fontSize:9.5, fontWeight:600, opacity:0.7 }}>{OSR_cmToIn(cm)} in</span></span>]), workingDistCm, setWorkingDistCm, 38)}
+            <span style={{ fontSize:11, fontWeight:700, color:OSR_C.muted, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>{wdAdd.toFixed(2)} D demand</span>
+            {sep}
+            <span style={lbl}>Age {patientAge}</span>
+            <span style={{ fontSize:15, fontWeight:700, color:OSR_C.navy, fontVariantNumeric:'tabular-nums' }}>{expected}</span>
             {expected !== '—' && (
-              <button onClick={() => adjustSubj(subjEye, 'add', parseFloat(expected) - subjRx[subjEye].add)}
-                style={{ minHeight:40, padding:'8px 12px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:11.5, fontWeight:700, color:OSR_C.text2, fontFamily:OSR_FONT, whiteSpace:'nowrap' }}>Apply</button>
+              <button onClick={() => OSR_setAddAbs(subjEye, parseFloat(expected))}
+                style={{ minHeight:40, padding:'6px 12px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:11.5, fontWeight:700, color:OSR_C.text2, fontFamily:OSR_FONT, whiteSpace:'nowrap' }}>Apply</button>
             )}
           </div>
-          <div style={{ width:1, height:32, background:'#e5e7eb' }}/>
-          {/* Add power follows the patient's habitual working distance, not age alone */}
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ ...OSR_VIOLATOR, fontSize:9 }}>Working distance</span>
-            <div style={{ display:'flex', background:'#f3f4f6', borderRadius:9, padding:3, gap:2 }}>
-              {[25, 33, 40, 50].map(cm => (
-                <button key={cm} onClick={() => setWorkingDistCm(cm)}
-                  style={{ minHeight:38, padding:'4px 11px', borderRadius:7, border:'none', cursor:'pointer', background: workingDistCm===cm ? '#fff' : 'transparent', color: workingDistCm===cm ? OSR_C.navy : '#6b7280', fontSize:11.5, fontWeight:700, fontFamily:OSR_FONT, boxShadow: workingDistCm===cm ? '0 1px 2px rgba(0,0,0,0.12)' : 'none', fontVariantNumeric:'tabular-nums' }}>{cm} cm</button>
-              ))}
+          <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            {OSR_toggleBtn(addLinked, 'Link OU', () => setAddLinked(v => !v), 'Add is normally equal in both eyes')}
+            {OSR_toggleBtn(distLock, 'Lock distance Rx', () => setDistLock(v => !v), 'Prevents sphere/cylinder/axis changes while refining near')}
+            {sep}
+            <span style={lbl}>Near Rx</span>
+            <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+              {objSequence.map(e => { const r = subjRx[e]; return (
+                <span key={e} style={{ fontSize:12, fontWeight:700, color:OSR_C.navy, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>
+                  <span style={{ color:accent, marginRight:6 }}>{e}</span>{OSR_fmtSph(r.sph + r.add)} {OSR_fmtCyl(r.cyl)} × {OSR_fmtAxis(r.axis)}
+                </span>
+              ); })}
             </div>
-            <span style={{ fontSize:11, fontWeight:700, color:OSR_C.muted, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>= {wdAdd.toFixed(2)} D demand</span>
+            {unequal && (
+              <button onClick={() => { setSubjStep('binocular'); setBalMode('balance'); }}
+                style={{ minHeight:36, padding:'5px 11px', borderRadius:9, border:'1px solid ' + OSR_C.amber + '66', background:OSR_C.amber + '12', color:OSR_C.amber, fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:OSR_FONT, whiteSpace:'nowrap' }}>Unequal add · recheck balance</button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (subjStep === 'binocular' && balMode === 'alignment') {
+      const st = OSR_alignState();
+      const arrow = (dir) => {
+        const d = { up:'M6 15l6-6 6 6', down:'M6 9l6 6 6-6', left:'M15 6l-6 6 6 6', right:'M9 6l6 6-6 6' }[dir];
+        return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
+      };
+      const base = (lab, dir, dh, dv, area) => (
+        <button key={lab} title={'Base ' + lab.toLowerCase() + ' · ' + prismEye} onClick={() => setPrism(p => ({ ...p, [prismEye]: { h: Math.round((p[prismEye].h + dh) * 100) / 100, v: Math.round((p[prismEye].v + dv) * 100) / 100 } }))}
+          style={{ gridArea:area, minWidth:0, minHeight:44, padding:'2px 4px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, color:OSR_C.text2, fontFamily:OSR_FONT, display:'flex', flexDirection: dir === 'up' || dir === 'down' ? 'column' : 'row', alignItems:'center', justifyContent:'center', gap:3 }}>
+          {(dir === 'up' || dir === 'left') && arrow(dir)}<span>{lab}</span>{(dir === 'down' || dir === 'right') && arrow(dir)}
+        </button>
+      );
+      // Mirrored per eye so In always points to the nose: OD → In left, OS → In right
+      const inLeft = prismEye === 'OD';
+      const split = () => setPrism(p => {
+        const H = p.OD.h + p.OS.h, R = -p.OD.v + p.OS.v;  // R = net base-down OD
+        const q = x => Math.round(x * 4) / 4;
+        return { OD:{ h: q(H / 2), v: q(-R / 2) }, OS:{ h: H - q(H / 2), v: R - q(R / 2) } };
+      });
+      return (
+        <div style={{ display:'flex', gap:14, alignItems:'center', flexWrap:'wrap' }}>
+          <div title="Image separation the patient sees" style={{ width:124, height:138, flexShrink:0, background: st.aligned ? '#f0fdf4' : '#fff', border:'2px solid ' + (st.aligned ? '#22a35a' : '#e5e7eb'), boxShadow: st.aligned ? '0 0 0 3px #22a35a22' : 'none', transition:'border-color 0.15s, background 0.15s', borderRadius:12, overflow:'hidden', display:'flex', flexDirection:'column', boxSizing:'border-box' }}>
+            <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', minHeight:0 }}>{OSR_alignSvg(120, 96, 9)}</div>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:4, padding:'5px 4px', fontSize: st.aligned ? 12 : 10.5, fontWeight:700, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap', color: st.aligned ? '#047857' : OSR_C.amber, background: st.aligned ? '#dcfce7' : OSR_C.amber + '14', borderTop:'1px solid ' + (st.aligned ? '#bbf7d0' : OSR_C.amber + '44') }}>
+              {st.aligned && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>}
+              {st.aligned ? 'Aligned' : OSR_pr(st.sep) + 'Δ · ' + (st.sep * 6).toFixed(1) + ' cm'}
+            </div>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'64px 52px 64px', gridTemplateRows:'44px 44px 44px', gridTemplateAreas:'". u ." "l c r" ". d ."', gap:3, flexShrink:0 }}>
+            {base('Up', 'up', 0, prismStep, 'u')}
+            {inLeft ? base('In', 'left', -prismStep, 0, 'l') : base('Out', 'left', prismStep, 0, 'l')}
+            <div style={{ gridArea:'c', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:9, background:'#f3f4f6' }}>
+              <span style={{ fontSize:10, fontWeight:700, color:OSR_C.muted, textTransform:'uppercase', letterSpacing:'0.06em', lineHeight:1 }}>Base</span>
+              <span style={{ fontSize:10.5, fontWeight:700, color:accent, lineHeight:1, marginTop:3 }}>{prismEye}</span>
+            </div>
+            {inLeft ? base('Out', 'right', prismStep, 0, 'r') : base('In', 'right', -prismStep, 0, 'r')}
+            {base('Down', 'down', 0, -prismStep, 'd')}
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8, flex:1, minWidth:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+              {OSR_seg([[0.25,'0.25Δ'], [0.5,'0.5Δ'], [1,'1Δ']], prismStep, setPrismStep, 36)}
+              <button onClick={split} style={{ minHeight:36, padding:'5px 11px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:11.5, fontWeight:700, color:OSR_C.text2, fontFamily:OSR_FONT, whiteSpace:'nowrap' }}>Split OU</button>
+              <button onClick={() => setPrism({ OD:{ h:0, v:0 }, OS:{ h:0, v:0 } })} style={{ minHeight:36, padding:'5px 11px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:11.5, fontWeight:700, color:OSR_C.text2, fontFamily:OSR_FONT, whiteSpace:'nowrap' }}>Clear</button>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+              {OSR_seg([['cross','Cross'], ['chart','Chart'], ['dot','Fusion dot']], alignMethod === 'associated' ? 'dot' : alignTarget, v => { if (v === 'dot') setAlignMethod('associated'); else { setAlignMethod('dissociated'); setAlignTarget(v); } })}
+            </div>
           </div>
         </div>
       );
@@ -1629,15 +2051,11 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
       const sphDiff = subjRx.OD.sph - subjRx.OS.sph;
       const balanced = Math.abs(sphDiff) < 0.001;
       return (
-        <div style={{ display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-            <span style={{ ...OSR_VIOLATOR, fontSize:9 }}>Occlusion</span>
-            <div style={{ display:'flex', background:'#f3f4f6', borderRadius:10, padding:3, gap:3 }}>
-              {[['OD','Right'], ['both','Both'], ['OS','Left']].map(([v, l]) => (
-                <button key={v} onClick={() => setBinocOcclude(v)} style={{ minWidth:62, minHeight:40, borderRadius:8, border:'none', cursor:'pointer', background: binocOcclude===v ? '#fff' : 'transparent', color: binocOcclude===v ? OSR_C.navy : '#6b7280', fontSize:12, fontWeight:700, fontFamily:OSR_FONT, boxShadow: binocOcclude===v ? '0 1px 2px rgba(0,0,0,0.12)' : 'none' }}>{l}</button>
-              ))}
-            </div>
-          </div>
+        <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          {OSR_seg([['occlusion','Alternate occlusion'], ['split','Per-eye split']], balDissoc, setBalDissoc, 36)}
+          {balDissoc === 'occlusion'
+            ? OSR_seg([['OD','Right'], ['both','Both'], ['OS','Left']], binocOcclude, setBinocOcclude, 36)
+            : <span style={{ fontSize:11, fontWeight:700, color:OSR_C.muted, background:'#f3f4f6', padding:'5px 11px', borderRadius:13, whiteSpace:'nowrap' }}>OD top · OS bottom</span>}
           <div style={{ display:'flex', alignItems:'center', gap:9, minHeight:44, padding:'4px 10px 4px 12px', borderRadius:10, border:'1.5px solid ' + (binocFog ? accent + '55' : '#e5e7eb'), background: binocFog ? accent + '0a' : '#fff' }}>
             <button onClick={() => setBinocFog(v => !v)} title="Toggle fogging" style={{ display:'flex', alignItems:'center', gap:8, border:'none', background:'transparent', cursor:'pointer', fontFamily:OSR_FONT, padding:0 }}>
               <span style={{ width:36, height:20, borderRadius:10, background: binocFog ? accent : '#cbd5e1', position:'relative', flexShrink:0, display:'block' }}>
@@ -1693,6 +2111,9 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
           </>
         )}
         <div style={{ flex:1 }}/>
+        {OSR_mpmva2Need() === false && subjStep !== 'mpmva2' && (
+          <span style={{ fontSize:11, fontWeight:700, color:OSR_C.muted, background:'#f3f4f6', padding:'5px 11px', borderRadius:13, whiteSpace:'nowrap' }}>Not needed · JCC unchanged</span>
+        )}
         <button onClick={() => setSubjStep(subjStep === 'mpmva2' ? 'sphere' : 'mpmva2')}
           style={{ minHeight:44, padding:'8px 16px', borderRadius:10, border:'1.5px solid ' + (subjStep === 'mpmva2' ? accent : '#e5e7eb'), background: subjStep === 'mpmva2' ? accent + '0e' : '#fff', color: subjStep === 'mpmva2' ? accent : '#6b7280', fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:OSR_FONT, whiteSpace:'nowrap' }}>
           {subjStep === 'mpmva2' ? 'Second MPMVA · on' : 'Second MPMVA'}
@@ -1703,7 +2124,7 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
 
   // ── The instrument: reference · working · Δ, focused by the active tool ──
   const OSR_RxMatrix = () => {
-    const activeField = OSR_TOOL_FIELD[subjStep];
+    const activeField = subjStep === 'binocular' && balMode === 'alignment' ? 'prism' : OSR_TOOL_FIELD[subjStep];
     const head = { ...OSR_VIOLATOR, fontSize:9 };
     const fields = [['SPH','sph', 0.25, OSR_fmtSph], ['CYL','cyl', 0.25, OSR_fmtCyl], ['AXIS','axis', 1, OSR_fmtAxis], ['ADD','add', 0.25, OSR_fmtAdd]];
     return (
@@ -1717,10 +2138,18 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
             <div key={e} style={{ flex:'1 1 326px', minWidth:326, border:'1.5px solid ' + (on ? accent + '55' : '#e9edf2'), background:'#fff', borderRadius:12, padding:'10px 12px 6px', opacity: dimmed ? 0.5 : 1, transition:'opacity 0.15s' }}>
               <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:6 }}>
                 <button onClick={() => setSubjEye(e)} style={{ minHeight:26, padding:'3px 12px', borderRadius:13, border:'none', background: on ? accent : '#eef1f4', color: on ? '#fff' : '#6b7280', fontSize:11.5, fontWeight:700, cursor:'pointer', fontFamily:OSR_FONT }}>{e}</button>
-                <span style={{ fontSize:11, color:OSR_C.muted, fontWeight:600 }}>{OSR_EYE_NAMED[e]}</span>
+                {!(OSR_hasPrism || activeField === 'prism') && <span style={{ fontSize:11, color:OSR_C.muted, fontWeight:600 }}>{OSR_EYE_NAMED[e]}</span>}
                 <div style={{ flex:1 }}/>
                 {doneEyesSubj.has(e) && <span style={{ fontSize:9.5, fontWeight:700, color:'#047857', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:10, padding:'1px 8px' }}>Refined</span>}
-                <span style={{ fontSize:11, fontWeight:700, color:OSR_C.navy, fontVariantNumeric:'tabular-nums' }}>SE {OSR_fmtSE(OSR_SE(w))}</span>
+                {(OSR_hasPrism || activeField === 'prism') && (
+                  <div style={{ display:'flex', alignItems:'center', gap:5, padding:'2px 3px 2px 9px', borderRadius:9, background: activeField === 'prism' && on ? accent + '0e' : '#f7f8fa' }}>
+                    <span style={{ ...head, color: activeField === 'prism' && on ? accent : OSR_C.muted }}>Prism</span>
+                    <span style={{ fontSize:11.5, fontWeight:700, color:OSR_C.navy, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>{OSR_fmtPrism(prism[e])}</span>
+                    <button onClick={() => setPrismRx(v => !v)} title={prismRx ? 'Prescribed — tap to record as measurement only' : 'Measurement only — tap to prescribe'}
+                      style={{ minHeight:26, padding:'2px 8px', borderRadius:7, border:'1.5px solid ' + (prismRx ? accent : '#e5e7eb'), background: prismRx ? accent : '#fff', color: prismRx ? '#fff' : '#6b7280', fontSize:10, fontWeight:700, cursor:'pointer', fontFamily:OSR_FONT }}>{prismRx ? 'Rx' : 'Meas.'}</button>
+                  </div>
+                )}
+                <span style={{ fontSize:11, fontWeight:700, color:OSR_C.navy, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>SE {OSR_fmtSE(OSR_SE(w))}</span>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'36px 52px minmax(124px,1fr) 48px', gap:'0 7px', alignItems:'center' }}>
                 <span/><span style={{ ...head, textAlign:'right' }}>Ref</span><span style={{ ...head, textAlign:'center' }}>Working</span><span style={{ ...head, textAlign:'right' }}>Δ</span>
@@ -1733,7 +2162,11 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
                       <span style={{ ...head, color: hot ? accent : OSR_C.muted, paddingTop:4 }}>{lab}</span>
                       <span style={{ fontSize:12.5, fontWeight:700, color:'#a8b0ba', fontVariantNumeric:'tabular-nums', textAlign:'right', paddingTop:4 }}>{fmt(ref[f])}</span>
                       <div style={{ paddingTop:2, paddingBottom:2, borderRadius:9, background: hot ? accent + '0c' : 'transparent' }}>
-                        <Stepper value={w[f]} field={f} step={st} onAdjust={adjustSubj} eye={e} fmt={fmt}/>
+                        {subjStep === 'add' && distLock && f !== 'add'
+                          ? <div title="Distance Rx locked while refining near" style={{ minHeight:40, display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:14, fontWeight:700, color:OSR_C.text2, fontVariantNumeric:'tabular-nums' }}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#a8b0ba" strokeWidth="2.4" strokeLinecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>{fmt(w[f])}
+                            </div>
+                          : <Stepper value={w[f]} field={f} step={st} onAdjust={adjustSubj} eye={e} fmt={fmt}/>}
                       </div>
                       <span style={{ fontSize:12.5, fontWeight:700, fontVariantNumeric:'tabular-nums', textAlign:'right', paddingTop:4, color: zero ? '#ccd2da' : accent }}>
                         {zero ? '—' : (f === 'axis' ? (d > 0 ? '+' : '') + d + '°' : (d > 0 ? '+' : '') + d.toFixed(2))}
@@ -1750,8 +2183,8 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
   };
 
   const renderSubjective = () => {
-    const toolMeta = OSR_TOOLS.find(t => t.id === (subjStep === 'mpmva2' ? 'sphere' : subjStep === 'jcc-power' ? 'jcc-axis' : subjStep)) || OSR_TOOLS[0];
-    const isJcc = subjStep === 'jcc-axis' || subjStep === 'jcc-power';
+    const toolMeta = OSR_TOOLS.find(t => t.id === (subjStep === 'mpmva2' ? 'sphere' : (subjStep === 'jcc-power' || subjStep === 'jcc-probe') ? 'jcc-axis' : subjStep)) || OSR_TOOLS[0];
+    const isJcc = subjStep === 'jcc-axis' || subjStep === 'jcc-power' || subjStep === 'jcc-probe';
     return (
       <div style={{ padding:'12px 18px 14px', height:'100%', boxSizing:'border-box', overflowY:'auto' }}>
         <div style={{ maxWidth:1280, margin:'0 auto', display:'flex', flexDirection:'column', gap:10 }}>
@@ -1763,9 +2196,9 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
               {OSR_TOOLS.map(t => {
                 const on = subjStep === t.id
                   || (t.id === 'sphere' && subjStep === 'mpmva2')
-                  || (t.id === 'jcc-axis' && subjStep === 'jcc-power');
+                  || (t.id === 'jcc-axis' && (subjStep === 'jcc-power' || subjStep === 'jcc-probe'));
                 return (
-                  <button key={t.id} onClick={() => setSubjStep(t.id)}
+                  <button key={t.id} onClick={() => OSR_goTool(t.id)}
                     style={{ flex:1, minWidth:0, minHeight:44, padding:'4px 10px', borderRadius:10, border:'1.5px solid ' + (on ? accent : 'transparent'), background: on ? accent : '#f7f8fa', cursor:'pointer', fontFamily:OSR_FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
                     <span style={{ fontSize:13, fontWeight:700, color: on ? '#fff' : '#374151', whiteSpace:'nowrap' }}>{t.label}</span>
                     <span style={{ fontSize:10.5, fontWeight:600, color: on ? 'rgba(255,255,255,0.75)' : '#a3abb5', whiteSpace:'nowrap' }}>{t.sub}</span>
@@ -1782,26 +2215,38 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
           <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
             <div style={{ width:292, flexShrink:0 }}>{OSR_PresentationPanel()}</div>
 
-            <div style={{ flex:1, minWidth:0, background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'13px 15px', display:'flex', flexDirection:'column', gap:12 }}>
+            <div style={{ flex:1, minWidth:0, background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'10px 15px 9px', display:'flex', flexDirection:'column', gap:9 }}>
               <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
                 <span style={{ fontSize:15, fontWeight:700, color:'#111827' }}>{toolMeta.label}</span>
                 {isJcc && (
                   <div style={{ display:'flex', background:'#f3f4f6', borderRadius:9, padding:3, gap:2 }}>
-                    {[['jcc-axis','Axis'], ['jcc-power','Power']].map(([id, lab]) => (
+                    {[['jcc-probe','Probe'], ['jcc-axis','Axis'], ['jcc-power','Power']].map(([id, lab]) => (
                       <button key={id} onClick={() => setSubjStep(id)}
                         style={{ minHeight:30, padding:'4px 15px', borderRadius:7, border:'none', cursor:'pointer', background: subjStep===id ? '#fff' : 'transparent', color: subjStep===id ? OSR_C.navy : '#6b7280', fontSize:11.5, fontWeight:700, fontFamily:OSR_FONT, boxShadow: subjStep===id ? '0 1px 2px rgba(0,0,0,0.12)' : 'none' }}>{lab}</button>
                     ))}
                   </div>
                 )}
-                <span style={{ fontSize:11.5, fontWeight:700, color:'#9ca3af' }}>{OSR_EYE_NAMED[subjEye]}</span>
+                {subjStep === 'binocular' && OSR_seg([['balance','Balance'], ['alignment','Alignment · prism']], balMode, setBalMode)}
+                {subjStep === 'add' && OSR_seg([['add','Add'], ['acuity','Near acuity'], ['range','Range']], nearTab, setNearTab)}
+                {subjStep === 'binocular' && balMode === 'alignment'
+                  ? <div style={{ display:'flex', alignItems:'center', gap:7 }}><span style={{ ...OSR_VIOLATOR, fontSize:9 }}>Prism on</span>{OSR_seg([['OD','OD'], ['OS','OS']], prismEye, setPrismEye)}</div>
+                  : <span style={{ fontSize:11.5, fontWeight:700, color:'#9ca3af' }}>{OSR_EYE_NAMED[subjEye]}</span>}
                 <div style={{ flex:1 }}/>
+                {((subjStep === 'binocular' && (balMode === 'alignment' || balDissoc === 'split')) || (subjStep === 'add' && nearConverge)) && OSR_hwChip()}
+                {subjStep === 'jcc-power' && Math.abs(subjRx[subjEye].cyl) > 1e-9 && Math.abs(subjRx[subjEye].cyl) <= 0.50 + 1e-9 && (
+                  <span style={{ fontSize:11, fontWeight:700, color:accent, background:accent + '12', padding:'4px 10px', borderRadius:13, whiteSpace:'nowrap' }}>Cyl ≤ 0.50 D · power first</span>
+                )}
+                {subjStep === 'add' && patientAge < 40 && !pseudophakic && (
+                  <span style={{ fontSize:11, fontWeight:700, color:OSR_C.muted, background:'#f3f4f6', padding:'4px 10px', borderRadius:13, whiteSpace:'nowrap' }}>Age {patientAge} · not typically indicated</span>
+                )}
+                {isJcc && (() => { const bN = (OSR_VA_LINES.find(l => l.va === getBestVA(subjEye).va) || {}).n; const jl = OSR_VA_LINES.find(l => l.n === Math.max(OSR_minN, (bN || 7) - 2)) || OSR_VA_LINES[0]; return <span style={{ fontSize:11, fontWeight:700, color:OSR_C.muted, background:'#f3f4f6', padding:'4px 10px', borderRadius:13, whiteSpace:'nowrap' }}>Target · O at {jl.va}</span>; })()}
                 {fogAmount > 0 && (subjStep === 'sphere' || subjStep === 'mpmva2') && (
                   <span style={{ fontSize:11, fontWeight:700, color:accent, background:accent + '12', padding:'4px 10px', borderRadius:13, whiteSpace:'nowrap' }}>Fog +{fogAmount.toFixed(2)} D</span>
                 )}
                 {mode === 'full' && <span style={{ fontSize:11, fontWeight:700, color:OSR_C.muted, background:'#f3f4f6', padding:'4px 10px', borderRadius:13, whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums' }}>{OSR_OBJ[subjEye].scans} scans</span>}
               </div>
 
-              <div style={{ background:'#fafbfc', border:'1px solid #eef1f4', borderRadius:11, padding:'10px 13px' }}>{OSR_ToolAccessory()}</div>
+              <div style={{ background:'#fafbfc', border:'1px solid #eef1f4', borderRadius:11, padding:'8px 12px' }}>{OSR_ToolAccessory()}</div>
 
               <div style={{ display:'flex', alignItems:'center', gap:9 }}>
                 <span style={OSR_VIOLATOR}>Prescription</span>
@@ -2301,6 +2746,7 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
                       {OSR_fmtSph(r.sph)} {OSR_fmtCyl(r.cyl)} × {OSR_fmtAxis(r.axis)}
                     </div>
                     <div style={{ fontSize:14, fontWeight:600, color:'#6b7280', fontVariantNumeric:'tabular-nums' }}>ADD {OSR_fmtAdd(r.add)}</div>
+                    {prismRx && OSR_fmtPrism(prism[e]) !== '—' && <div style={{ fontSize:14, fontWeight:700, color:OSR_C.navy, fontVariantNumeric:'tabular-nums' }}>Prism {OSR_fmtPrism(prism[e])}</div>}
                   </div>
                 );
               })}
@@ -2308,6 +2754,29 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
             <div style={{ marginTop:16, display:'flex', alignItems:'center', gap:10 }}>
               <span style={{ ...OSR_VIOLATOR, fontSize:10 }}>BCVA achieved</span>
               <span style={{ fontSize:15, fontWeight:700, color:OSR_C.navy, fontVariantNumeric:'tabular-nums' }}>{bcva('OD')} OD · {bcva('OS')} OS</span>
+            </div>
+          </div>
+
+          {/* Near + binocular findings — measurements recorded; prescribing stays the clinician's call */}
+          <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e5e7eb', padding:'18px 20px' }}>
+            <div style={{ ...OSR_REPORT_LABEL, marginBottom:14 }}>Near &amp; binocular findings</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:'14px 22px' }}>
+              {[
+                ['Working distance', workingDistCm + ' cm · ' + OSR_cmToIn(workingDistCm) + ' in · ' + (100 / workingDistCm).toFixed(2) + ' D demand'],
+                ['Near Rx', objSequence.map(e => e + ' ' + OSR_fmtSph(subjRx[e].sph + subjRx[e].add) + ' ' + OSR_fmtCyl(subjRx[e].cyl) + ' × ' + OSR_fmtAxis(subjRx[e].axis)).join('  ·  ')],
+                ['Near acuity', ['OU','OD','OS'].filter(k => nearVA[k]).map(k => k + ' ' + nearVA[k] + ' (' + OSR_mUnits(nearVA[k], workingDistCm) + ' M)').join('  ·  ') || 'Not recorded'],
+                ['Near conditions', (nearContrast === 'high' ? 'High' : 'Low') + ' contrast · ' + (nearLight === 'photopic' ? 'Photopic' : 'Mesopic') + (nearConverge ? ' · converged ' + OSR_convDemand.toFixed(1) + 'Δ' : ' · not converged')],
+                ['Range of clear vision', 'NRA +' + nra.toFixed(2) + ' · PRA ' + (pra < 0 ? '−' : '') + Math.abs(pra).toFixed(2)],
+                ['Near PD', OSR_nearPD.toFixed(1) + ' mm (distance PD ' + OSR_DEMO_PD_MM + ' mm)'],
+                ['Balance', balDissoc === 'split' ? 'Per-eye split dissociation' : 'Alternate occlusion' + (binocFog ? ' · fog +' + binocFogAmt.toFixed(2) + ' D' : '')],
+                ['Prism — measured', OSR_hasPrism ? objSequence.map(e => e + ' ' + OSR_fmtPrism(prism[e])).join('  ·  ') + ' · ' + alignMethod : 'None measured'],
+                ['Prism — prescribed', prismRx && OSR_hasPrism ? 'Yes — in final Rx' : 'No'],
+              ].map(([k, v]) => (
+                <div key={k} style={{ minWidth:0 }}>
+                  <div style={{ ...OSR_VIOLATOR, fontSize:9.5, marginBottom:4 }}>{k}</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:OSR_C.navy, fontVariantNumeric:'tabular-nums', lineHeight:1.4 }}>{v}</div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -2358,7 +2827,7 @@ function ObjectiveSubjectiveRefractionTest({ onBack, tweaks }) {
           <div style={{ background:`${accent}0f`, border:`1.5px solid ${accent}33`, borderRadius:14, padding:'16px 20px' }}>
             <div style={{ ...OSR_REPORT_LABEL, marginBottom:10 }}>Clinical Summary</div>
             <ul style={{ margin:0, paddingLeft:18, fontSize:13, color:'#374151', lineHeight:1.7 }}>
-              {ranObjective && <li>Objective refraction completed: {OSR_OBJ.OD.scans} scan(s) OD · {OSR_OBJ.OS.scans} scan(s) OS.</li>}
+              {ranObjective && <li>Objective refraction: {OSR_OBJ.OD.scans} scans averaged OD{OSR_OBJ.OD.rejected ? ` (${OSR_OBJ.OD.rejected} rejected)` : ''} · {OSR_OBJ.OS.scans} scans averaged OS{OSR_OBJ.OS.rejected ? ` (${OSR_OBJ.OS.rejected} rejected)` : ''} — power-vector averaged.</li>}
               <li>Subjective refinement completed: OD and OS.</li>
               <li>Final Rx pending clinician certification.</li>
             </ul>

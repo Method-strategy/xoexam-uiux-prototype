@@ -1,10 +1,10 @@
 # xoExam™ UI/UX — Clinical Standards Reference
 ## A guide for the clinical team evaluating the prototype
-### Method Marketing Agency · September 2026 · Version 0.3.2
+### Method Marketing Agency · October 2026 · Version 0.3.3
 
 ---
 
-> **v0.3.2 note — subjective-refraction protocol brought into line with published technique.** v0.3.2 corrects the subjective protocol of **Objective & Subjective Refraction** against the Westmead Eye Manual §8.2: the sphere step now branches on accommodation (direct comparison at 60+ or pseudophakic, fogging protocol below 60, with the manual's +0.50 D / −0.25 D step asymmetry); the JCC fixation target is a round "O" two lines above best acuity; separate higher/lower cross-cylinder powers are used for axis and power; handle-vs-axis alignment is depicted; sphere compensation (0.25 D per 0.50 D cylinder) is applied to hold the circle of least confusion; an axis-midpoint endpoint is offered; the duochrome endpoint follows RAM-GAP and leaves the patient slightly on the red side; and near add follows habitual working distance as well as age. **Axis before power is confirmed unchanged.** No other test was modified and Wavefront Refraction itself is untouched; the count of tests at clinical fidelity is unchanged.
+> **v0.3.3 note — binocular alignment, near vision and refraction-flow branching in Objective & Subjective Refraction.** Adds digital-prism alignment measurement (per-eye image displacement, BI/BO/BU/BD, dissociated vs associated method recorded; measured prism is recorded by default and enters the prescription only when the clinician elects to prescribe it); a near-vision workflow (linked add, locked distance Rx, near Rx, near acuity in Snellen-equivalent and M-units, contrast and lighting, convergence for working distance, NRA/PRA with centered add); a selectable 3- or 5-scan objective capture averaged in power-vector space with automatic rejection of spurious readings and recorded scan spread; and JCC entry branching on starting cylinder per standard refraction flow (axis first above 0.50 D, power first at or below 0.50 D, probe when no cylinder is present). Wavefront Refraction is untouched; the count of tests at clinical fidelity is unchanged.
 
 ---
 
@@ -26,7 +26,7 @@ Tests not listed in this guide are at **visual placeholder fidelity**: the UI lo
 
 ---
 
-## Scope of clinical fidelity in v0.3.2
+## Scope of clinical fidelity in v0.3.3
 
 > The xoExam UI/UX ships as one unified build. The right-hand column records *when each test last reached clinical fidelity*, not a separate version number per test.
 
@@ -386,4 +386,4 @@ These will be brought to clinical fidelity in priority order. The clinical evalu
 
 This document is updated at each clinical-fidelity milestone. If the clinical evaluation team identifies a deviation from current published standards, please flag it for the next revision. Contact Method Marketing Agency through the standard project channels.
 
-*Method Marketing Agency · xoExam UI/UX Clinical Standards Reference · v0.3.2 · September 18, 2026*
+*Method Marketing Agency · xoExam UI/UX Clinical Standards Reference · v0.3.3 · October 13, 2026*
